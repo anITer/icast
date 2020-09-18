@@ -21,8 +21,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#ifndef CAP_DEVICE_H
-#define CAP_DEVICE_H
+#ifndef CAPTURE_DEVICE_H
+#define CAPTURE_DEVICE_H
 
 #include <vector>
 #include <string>
@@ -70,4 +70,4 @@ protected:
     OnDeviceUpdateCallback* _update_event_callback = nullptr;
 };
 
-#endif // CAP_DEVICE_H
+#endif // CAPTURE_DEVICE_H
