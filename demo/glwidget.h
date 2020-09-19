@@ -51,8 +51,11 @@ protected:
     void paintFPS();
 private:
     void selectDevice(); // test function
+    void resetTextureSize();
     int on_device_updated() override;
 
+    int wndWidth = 0;
+    int wndHeight = 0;
 	QOpenGLShaderProgram program;
     GLuint texture;
     int mvpMatrixHandle;
@@ -79,8 +82,8 @@ private:
 	qreal fps;
 
     PixelFormat curFormat;
-    int width = 0;
-    int height = 0;
+    int texWidth = 0;
+    int texHeight = 0;
     bool isSizeChanged = false;
     ICaptureDevice* capDevice;
 };

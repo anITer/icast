@@ -29,6 +29,7 @@
 #include "camera_device.h"
 #include "screen_capturer.h"
 #include "window_capturer.h"
+#include "cursor_capturer.h"
 
 static const int GL_WIDTH_ALIGN_SIZE = 2;
 static const float IDENTITY_MATRIX[16] = {
@@ -72,9 +73,10 @@ GLWidget::GLWidget(QWidget *parent):
     timer->start(1);
 
     capDevice = new
+     CursorCapturer();
 //     WindowCapturer();
 //     ScreenCapturer();
-     CameraDevice();
+//     CameraDevice();
     capDevice->set_update_callback(this);
     selectDevice();
 }
@@ -86,35 +88,37 @@ GLWidget::~GLWidget()
 }
 void GLWidget::selectDevice()
 {
-    std::vector<DeviceInfo> list = capDevice->enum_devices();
+    const std::vector<DeviceInfo>& list = capDevice->enum_devices();
     for (DeviceInfo info : list) {
         printf("find device with info [%s | %dx%d]\n", info._name.c_str(), info._width, info._height);
     }
 
-    int test_dev_index = 1;
-    int w = list[test_dev_index]._width;
-    int h = list[test_dev_index]._height;
-    if (w != width || h != height) {
-        isSizeChanged = true;
-    }
-    width = w;
-    height = h;
+    // test code
+    WindowCapturer* winCap = new WindowCapturer();
+    const std::vector<DeviceInfo>& listWin = winCap->enum_devices();
+    ((CursorCapturer*) capDevice)->set_parent_window(((WindowCapturer::XCWindow*)(listWin[6]._ext_data))->_handle);
+    delete winCap;
 
-    curFormat = list[test_dev_index]._format;
-    capDevice->bind_device(list[test_dev_index]);
+    capDevice->bind_device(4);
+    DeviceInfo* info = capDevice->get_cur_device();
+    texWidth = info->_width;
+    texHeight = info->_height;
+    curFormat = info->_format;
+    isSizeChanged = true;
     capDevice->start_device();
 
-    resize(width, height);
+    resize(texWidth, texHeight);
 }
 int GLWidget::on_device_updated()
 {
-    if (!capDevice) {
-        return -1;
+    DeviceInfo* info = capDevice->get_cur_device();
+    int w = info->_width;
+    int h = info->_height;
+    if (w != texWidth || h != texHeight) {
+        isSizeChanged = true;
     }
-    capDevice->stop_device();
-    capDevice->unbind_device();
-
-    selectDevice();
+    texWidth = w;
+    texHeight = h;
     return 0;
 }
 void GLWidget::initializeGL()
@@ -144,12 +148,13 @@ void GLWidget::paintGL()
         glBindTexture(GL_TEXTURE_2D, texture);
         // TODO:: check texture format
         if (curFormat == PIXEL_FORMAT_RGBA) {
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, (uint8_t*) pixels);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, texWidth, texHeight, GL_RGBA, GL_UNSIGNED_BYTE, (uint8_t*) pixels);
         } else { // YUYV for camera
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width >> 1, height, GL_RGBA, GL_UNSIGNED_BYTE, (uint8_t*) pixels);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, texWidth >> 1, texHeight, GL_RGBA, GL_UNSIGNED_BYTE, (uint8_t*) pixels);
         }
         glBindTexture(GL_TEXTURE_2D, 0);
     }
+
     draw();
 
     // dump rendered rgba buffer
@@ -160,6 +165,8 @@ void GLWidget::paintGL()
     // fclose(tmp);
 
     glUseProgram(0);
+
+    if (isSizeChanged) resetTextureSize();
 
     calcFPS();
     paintFPS();
@@ -180,7 +187,7 @@ void GLWidget::draw()
     glBindTexture(GL_TEXTURE_2D, texture);
     glUniform1i(colorMapHandle, 0);
 
-    glUniform1f(texWidthHandle, (float) (1.0 / width));
+    glUniform1f(texWidthHandle, (float) (1.0 / texWidth));
 
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -190,11 +197,16 @@ void GLWidget::draw()
 void GLWidget::resizeGL(int w, int h)
 {
     glViewport(0, 0, w, h);
-
+    wndWidth = w;
+    wndHeight = h;
+    resetTextureSize();
+}
+void GLWidget::resetTextureSize()
+{
     mMvpMatrix[5] = -1.0; // flip virtically
     mMvpMatrix[0] = 1.0; // flip horizontally
 
-    float scale = (float) w / h / ((float) width / height);
+    float scale = (float) wndWidth / wndHeight / ((float) texWidth / texHeight);
     // scale to keep ratio
     if (scale < 1.0) {
         mMvpMatrix[5] *= scale; // scale witdh to fit ratio
@@ -293,9 +305,9 @@ void GLWidget::initTextures()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     // TODO:: check texture format
     if (curFormat == PIXEL_FORMAT_RGBA) {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, get_gl_width(width), height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, get_gl_width(texWidth), texHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
     } else { // YUYV for camera
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, get_gl_width(width) >> 1, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, get_gl_width(texWidth) >> 1, texHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
     }
     isSizeChanged = false;
 }

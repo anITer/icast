@@ -34,8 +34,8 @@ public:
     CameraDevice();
     ~CameraDevice();
 
-    std::vector<DeviceInfo>& enum_devices() override;
-    int bind_device(DeviceInfo info) override;
+    const std::vector<DeviceInfo>& enum_devices() override;
+    int bind_device(int index) override;
     int unbind_device() override;
     int start_device() override;
     int stop_device() override;
@@ -47,7 +47,6 @@ private:
     int _width = 0;
     int _height = 0;
     v4l2_device_t* _v4l2_cam = nullptr;
-    std::vector<DeviceInfo> _dev_list;
 };
 
 #endif // CAMERA_DEVICE_H

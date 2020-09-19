@@ -26,7 +26,7 @@
 
 const std::string DEVICE_PREFIX = "/dev/video";
 
-CameraDevice::CameraDevice() : _dev_list()
+CameraDevice::CameraDevice()
 {
 
 }
@@ -35,15 +35,11 @@ CameraDevice::~CameraDevice()
 {
     stop_device();
     unbind_device();
-
-    _dev_list.clear();
 }
 
-std::vector<DeviceInfo>& CameraDevice::enum_devices()
+const std::vector<DeviceInfo>& CameraDevice::enum_devices()
 {
-    if (_dev_list.size()) {
-        _dev_list.clear();
-    }
+    clear_devices();
 
     v4l2_device_t* tmp_cam = nullptr;
     for (int i = 0; i < 8; i++) {
@@ -56,18 +52,20 @@ std::vector<DeviceInfo>& CameraDevice::enum_devices()
         }
         v4l2_get_format(tmp_cam, &tmp_cam->_format);
         v4l2_enum_format(tmp_cam, &tmp_cam->_format);
-        _dev_list.push_back({ get_pixel_format(tmp_cam->_format), (int) tmp_cam->_format._width[0],
-                             (int) tmp_cam->_format._height[0], tmp_name, i, tmp_cam
-                           });
+        _dev_list.push_back({ get_pixel_format(tmp_cam->_format), 0, 0,
+                              (int) tmp_cam->_format._width[0],
+                              (int) tmp_cam->_format._height[0], tmp_name, i, tmp_cam });
         v4l2_close_device(tmp_cam);
     }
     return _dev_list;
 }
 
-int CameraDevice::bind_device(DeviceInfo info)
+int CameraDevice::bind_device(int index)
 {
     unbind_device();
 
+    _cur_dev_index = index;
+    DeviceInfo& info = _dev_list[index];
     _v4l2_cam = (v4l2_device_t*) info._ext_data;
     v4l2_set_format(_v4l2_cam, &_v4l2_cam->_format, 1);
     _width = info._width;
@@ -80,6 +78,7 @@ int CameraDevice::unbind_device()
     if (!_v4l2_cam) return 0;
     v4l2_destroy_device(_v4l2_cam);
     _v4l2_cam = nullptr;
+    _cur_dev_index = -1;
     return 0;
 }
 

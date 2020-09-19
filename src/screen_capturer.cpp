@@ -46,7 +46,7 @@ static ScreenCapturer::XCScreen create_screen(int index, int id, int h, int w, i
     return ret;
 }
 
-ScreenCapturer::ScreenCapturer() : _dev_list(), _screen_list()
+ScreenCapturer::ScreenCapturer() : _screen_list()
 {
 
 }
@@ -56,14 +56,13 @@ ScreenCapturer::~ScreenCapturer()
     stop_device();
     unbind_device();
 
-    _dev_list.clear();
     _screen_list.clear();
 }
 
-std::vector<DeviceInfo>& ScreenCapturer::enum_devices()
+const std::vector<DeviceInfo>& ScreenCapturer::enum_devices()
 {
-    if (_dev_list.size()) {
-        _dev_list.clear();
+    clear_devices();
+    if (_screen_list.size()) {
         _screen_list.clear();
     }
 
@@ -85,18 +84,20 @@ std::vector<DeviceInfo>& ScreenCapturer::enum_devices()
         auto name = SCREEN_PREFIX + std::to_string(i);
         _screen_list.push_back(create_screen(i, screen[i].screen_number, screen[i].height,
                                             screen[i].width, screen[i].x_org, screen[i].y_org, name, 1.0f));
-        _dev_list.push_back({ PIXEL_FORMAT_RGBA, screen[i].width, screen[i].height, name, i, &_screen_list[i] });
+        _dev_list.push_back({ PIXEL_FORMAT_RGBA, 0, 0, screen[i].width, screen[i].height, name, i, &_screen_list[i] });
     }
     XFree(screen);
     XCloseDisplay(display);
     return _dev_list;
 }
 
-int ScreenCapturer::bind_device(DeviceInfo info)
+int ScreenCapturer::bind_device(int index)
 {
     unbind_device();
 
-    _cur_screen = *((XCScreen*) info._ext_data);
+    _cur_dev_index = index;
+    DeviceInfo& info = _dev_list[index];
+    XCScreen& screen = *((XCScreen*) info._ext_data);
     _cur_display = XOpenDisplay(NULL);
     if(!_cur_display) {
         return -1;
@@ -106,7 +107,7 @@ int ScreenCapturer::bind_device(DeviceInfo info)
 
     _cur_image = XShmCreateImage(_cur_display, DefaultVisual(_cur_display, scr),
                                 DefaultDepth(_cur_display, scr), ZPixmap, NULL,
-                                _shm_info, _cur_screen._width, _cur_screen._height);
+                                _shm_info, screen._width, screen._height);
     _shm_info->shmid = shmget(IPC_PRIVATE, _cur_image->bytes_per_line * _cur_image->height, IPC_CREAT | 0777);
     _shm_info->readOnly = false;
     _shm_info->shmaddr = _cur_image->data = (char*) shmat(_shm_info->shmid, 0, 0);
@@ -118,7 +119,6 @@ int ScreenCapturer::bind_device(DeviceInfo info)
 
 int ScreenCapturer::unbind_device()
 {
-    _cur_screen = {};
     if(_shm_info) {
         shmdt(_shm_info->shmaddr);
         shmctl(_shm_info->shmid, IPC_RMID, 0);
@@ -133,6 +133,7 @@ int ScreenCapturer::unbind_device()
         XCloseDisplay(_cur_display);
         _cur_display = 0;
     }
+    _cur_dev_index = -1;
     return 0;
 }
 
@@ -148,13 +149,14 @@ int ScreenCapturer::stop_device()
 
 int ScreenCapturer::grab_frame(unsigned char *&buffer)
 {
+    XCScreen& screen = _screen_list[_cur_dev_index];
     if(!XShmGetImage(_cur_display, RootWindow(_cur_display, DefaultScreen(_cur_display)),
-                     _cur_image, _cur_screen._offset_x, _cur_screen._offset_y, AllPlanes)) {
+                     _cur_image, screen._offset_x, screen._offset_y, AllPlanes)) {
         if (_update_event_callback) {
             _update_event_callback->on_device_updated();
         }
         return -1;
     }
     buffer = (unsigned char*) _cur_image->data;
-    return _cur_screen._width * _cur_screen._height * 4;
+    return screen._width * screen._height * 4;
 }

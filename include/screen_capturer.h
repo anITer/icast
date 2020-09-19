@@ -53,8 +53,8 @@ public:
     ScreenCapturer();
     virtual ~ScreenCapturer();
 
-    virtual std::vector<DeviceInfo>& enum_devices() override;
-    int bind_device(DeviceInfo info) override;
+    virtual const std::vector<DeviceInfo>& enum_devices() override;
+    int bind_device(int index) override;
     int unbind_device() override;
     int start_device() override;
     int stop_device() override;
@@ -64,8 +64,6 @@ protected:
     std::vector<XCScreen> _screen_list;
 
 private:
-    std::vector<DeviceInfo> _dev_list;
-    XCScreen _cur_screen;
     Display* _cur_display = nullptr;
     XImage* _cur_image = nullptr;
     XShmSegmentInfo* _shm_info = nullptr;

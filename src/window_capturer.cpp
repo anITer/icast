@@ -58,7 +58,7 @@ static WindowCapturer::XCWindow create_window(Display* display, XID& window)
     XGetWMName(display, window, &property);
     std::vector<std::string> candidates = property_to_string(display, property);
     WindowCapturer::XCWindow w = {};
-    w._handle = reinterpret_cast<size_t>(window);
+    w._handle = window;
 
     XWindowAttributes wndattr;
     XGetWindowAttributes(display, window, &wndattr);
@@ -71,7 +71,7 @@ static WindowCapturer::XCWindow create_window(Display* display, XID& window)
     return w;
 }
 
-WindowCapturer::WindowCapturer() : _dev_list(), _window_list()
+WindowCapturer::WindowCapturer() : _window_list()
 {
 
 }
@@ -81,19 +81,17 @@ WindowCapturer::~WindowCapturer()
     stop_device();
     unbind_device();
 
-    _dev_list.clear();
     _window_list.clear();
 }
 
-std::vector<DeviceInfo>& WindowCapturer::enum_devices()
+const std::vector<DeviceInfo>& WindowCapturer::enum_devices()
 {
-    if (_dev_list.size() > 0) {
-        _dev_list.clear();
+    clear_devices();
+    if (_window_list.size() > 0) {
         _window_list.clear();
     }
 
     // TODO:: using detected display??
-    ScreenCapturer::enum_devices();
     Display* display = XOpenDisplay(NULL);
     if(!display) {
         return _dev_list;
@@ -109,12 +107,14 @@ std::vector<DeviceInfo>& WindowCapturer::enum_devices()
     if(status >= Success && num_items) {
         _window_list.reserve(num_items);
         _dev_list.reserve(num_items);
-        auto array = (XID*)data;
+        XID* array = (XID*) data;
         for(unsigned long i = 0; i < num_items; i++) {
-            auto w = array[i];
+            XID& w = array[i];
             _window_list.push_back(create_window(display, w));
-            _dev_list.push_back({ PIXEL_FORMAT_RGBA, _window_list[i]._size._x, _window_list[i]._size._y,
-                                 _window_list[i]._name, (int) i, &_window_list[i] });
+            _dev_list.push_back({ PIXEL_FORMAT_RGBA,
+                                  _window_list[i]._position._x, _window_list[i]._position._y,
+                                  _window_list[i]._size._x, _window_list[i]._size._y,
+                                  _window_list[i]._name, (int) i, &_window_list[i] });
         }
         XFree(data);
     }
@@ -122,11 +122,34 @@ std::vector<DeviceInfo>& WindowCapturer::enum_devices()
     return _dev_list;
 }
 
-int WindowCapturer::bind_device(DeviceInfo info)
+int WindowCapturer::resize_window_internal()
+{
+    if (_cur_dev_index < 0) {
+        return -1;
+    }
+
+    XCWindow& window = _window_list[_cur_dev_index];
+    XWindowAttributes wndattr;
+    if(XGetWindowAttributes(_cur_display, window._handle, &wndattr) == 0) {
+        return -1;
+    }
+    window._position = { wndattr.x, wndattr.y };
+    window._size = { wndattr.width, wndattr.height };
+
+    _dev_list[_cur_dev_index]._pos_x = wndattr.x;
+    _dev_list[_cur_dev_index]._pos_y = wndattr.y;
+    _dev_list[_cur_dev_index]._width = wndattr.width;
+    _dev_list[_cur_dev_index]._height = wndattr.height;
+
+    return bind_device(_cur_dev_index);
+}
+
+int WindowCapturer::bind_device(int index)
 {
     unbind_device();
 
-    _cur_window = *((XCWindow*) info._ext_data);
+    _cur_dev_index = index;
+    XCWindow& window = _window_list[index];
     // TODO:: using detected display??
     _cur_display = XOpenDisplay(NULL);
     if(!_cur_display) {
@@ -136,7 +159,7 @@ int WindowCapturer::bind_device(DeviceInfo info)
     _shm_info = new XShmSegmentInfo();
     _cur_image = XShmCreateImage(_cur_display, DefaultVisual(_cur_display, scr),
                                 DefaultDepth(_cur_display, scr), ZPixmap, NULL,
-                                _shm_info, _cur_window._size._x, _cur_window._size._y);
+                                _shm_info, window._size._x, window._size._y);
     _shm_info->shmid = shmget(IPC_PRIVATE, _cur_image->bytes_per_line * _cur_image->height, IPC_CREAT | 0777);
     _shm_info->readOnly = false;
     _shm_info->shmaddr = _cur_image->data = (char*) shmat(_shm_info->shmid, 0, 0);
@@ -148,7 +171,6 @@ int WindowCapturer::bind_device(DeviceInfo info)
 
 int WindowCapturer::unbind_device()
 {
-    _cur_window = {};
     if(_shm_info) {
         shmdt(_shm_info->shmaddr);
         shmctl(_shm_info->shmid, IPC_RMID, 0);
@@ -163,36 +185,45 @@ int WindowCapturer::unbind_device()
         XCloseDisplay(_cur_display);
         _cur_display = 0;
     }
+    _cur_dev_index = -1;
+    return 0;
+}
+
+int WindowCapturer::start_device()
+{
+    return 0;
+}
+
+int WindowCapturer::stop_device()
+{
     return 0;
 }
 
 int WindowCapturer::grab_frame(unsigned char *&buffer)
 {
+    XCWindow& window = _window_list[_cur_dev_index];
     XWindowAttributes wndattr;
-    if(XGetWindowAttributes(_cur_display, _cur_window._handle, &wndattr) == 0){
+    if(XGetWindowAttributes(_cur_display, window._handle, &wndattr) == 0) {
         if (_update_event_callback) {
             _update_event_callback->on_device_updated();
         }
         return -1; // window might not be valid any more
     }
-    if(wndattr.width != _cur_window._size._x || wndattr.height != _cur_window._size._y){
+    if(wndattr.width != window._size._x || wndattr.height != window._size._y) {
+        resize_window_internal();
         if (_update_event_callback) {
             _update_event_callback->on_device_updated();
         }
         return -2; // window size changed. This will rebuild everything
     }
 
-    if(!XShmGetImage(_cur_display,
-                     _cur_window._handle,
-                     _cur_image,
-                     0,
-                     0,
-                     AllPlanes)) {
+    if(!XShmGetImage(_cur_display, window._handle,
+                     _cur_image, 0, 0, AllPlanes)) {
         if (_update_event_callback) {
             _update_event_callback->on_device_updated();
         }
         return -3;
     }
     buffer = (unsigned char*) _cur_image->data;
-    return _cur_window._size._x * _cur_window._size._y * 4;
+    return window._size._x * window._size._y * 4;
 }

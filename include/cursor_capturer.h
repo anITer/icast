@@ -21,45 +21,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#ifndef WINDOW_CAPTURER_H
-#define WINDOW_CAPTURER_H
+#ifndef CURSOR_UTIL_H
+#define CURSOR_UTIL_H
 
 #include "capture_interface.h"
-#include <X11/Xlib.h>
-#include <X11/extensions/XShm.h>
+#include <X11/X.h>
+#include <X11/extensions/Xfixes.h>
 
-class WindowCapturer : public ICaptureDevice
+class CursorCapturer : public ICaptureDevice
 {
 public:
-struct XCPoint {
-    int _x;
-    int _y;
-};
-struct XCWindow {
-    XID _handle;
-    XCPoint _position;
-    XCPoint _size;
-    // Name will always be lower case. It is converted to lower case
-    // internally by the library for comparisons
-    char _name[128] = {0};
-};
-public:
-    WindowCapturer();
-    ~WindowCapturer() override;
-
+    CursorCapturer();
+    ~CursorCapturer();
     const std::vector<DeviceInfo>& enum_devices() override;
     int bind_device(int index) override;
     int unbind_device() override;
     int start_device() override;
     int stop_device() override;
     int grab_frame(unsigned char* &buffer) override;
-
+    void set_parent_window(const XID& window);
 private:
-    int resize_window_internal();
-    std::vector<XCWindow> _window_list;
+    XID _cur_window = 0;
+    XFixesCursorImage* _cur_image = nullptr;
     Display* _cur_display = nullptr;
-    XImage* _cur_image = nullptr;
-    XShmSegmentInfo* _shm_info = nullptr;
 };
 
-#endif // WINDOW_CAPTURER_H
+#endif // CURSOR_UTIL_H
