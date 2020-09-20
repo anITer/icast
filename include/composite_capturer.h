@@ -21,45 +21,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#ifndef WINDOW_CAPTURER_H
-#define WINDOW_CAPTURER_H
+#ifndef COMPOSITE_CAPTURER_H
+#define COMPOSITE_CAPTURER_H
 
-#include "capture_interface.h"
-#include <X11/Xlib.h>
-#include <X11/extensions/XShm.h>
+#include "cursor_capturer.h"
 
-class WindowCapturer : public ICaptureDevice
+class CompositeCapturer : public ICaptureDevice
 {
 public:
-struct XCPoint {
-    int _x;
-    int _y;
-};
-struct XCWindow {
-    XID _handle;
-    XCPoint _position;
-    XCPoint _size;
-    // Name will always be lower case. It is converted to lower case
-    // internally by the library for comparisons
-    char _name[128] = {0};
-};
-public:
-    WindowCapturer();
-    ~WindowCapturer() override;
+    CompositeCapturer(ICaptureDevice* window_cap);
+    ~CompositeCapturer();
 
     const std::vector<DeviceInfo>& enum_devices() override;
+    DeviceInfo* get_cur_device() override;
     int bind_device(int index) override;
     int unbind_device() override;
     int start_device() override;
     int stop_device() override;
     int grab_frame(unsigned char* &buffer) override;
+    void clear_devices() override;
+    void set_update_callback(OnDeviceUpdateCallback* callback) override;
+    void remove_update_callback() override;
 
 private:
-    int resize_window_internal(int x, int y, int width, int height);
-    std::vector<XCWindow> _window_list;
-    Display* _cur_display = nullptr;
-    XImage* _cur_image = nullptr;
-    XShmSegmentInfo* _shm_info = nullptr;
+    ICaptureDevice* _window_cap_device = nullptr;
+    CursorCapturer* _cursor_cap_device = nullptr;
 };
 
-#endif // WINDOW_CAPTURER_H
+#endif // COMPOSITE_CAPTURER_H

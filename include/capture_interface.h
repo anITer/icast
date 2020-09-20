@@ -56,7 +56,7 @@ public:
 
 class ICaptureDevice
 {
-protected:
+public:
     ICaptureDevice() : _dev_list() { }
     virtual ~ICaptureDevice()
     {
@@ -64,6 +64,12 @@ protected:
     }
 public:
     virtual const std::vector<DeviceInfo>& enum_devices() = 0;
+    virtual int bind_device(int index) = 0;
+    virtual int unbind_device() = 0;
+    virtual int start_device() = 0;
+    virtual int stop_device() = 0;
+    virtual int grab_frame(unsigned char* &buffer) = 0;
+
     virtual void clear_devices()
     {
         for (DeviceInfo& dev : _dev_list) {
@@ -75,11 +81,6 @@ public:
     virtual DeviceInfo* get_cur_device()
     { return _cur_dev_index >= 0 ? &_dev_list[_cur_dev_index] : nullptr; }
 
-    virtual int bind_device(int index) = 0;
-    virtual int unbind_device() = 0;
-    virtual int start_device() = 0;
-    virtual int stop_device() = 0;
-    virtual int grab_frame(unsigned char* &buffer) = 0;
     virtual void set_update_callback(OnDeviceUpdateCallback* callback)
     { _update_event_callback = callback; }
 

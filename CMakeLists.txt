@@ -20,11 +20,13 @@ add_library(icast SHARED
   include/screen_capturer.h
   include/window_capturer.h
   include/cursor_capturer.h
+  include/composite_capturer.h
   src/v4l2.cpp
   src/camera_device.cpp
   src/screen_capturer.cpp
   src/window_capturer.cpp
   src/cursor_capturer.cpp
+  src/composite_capturer.cpp
 )
 target_link_libraries(icast ${X11_LIBRARIES}    # libx11-dev
                             ${X11_Xfixes_LIB}   # libxfixes-dev

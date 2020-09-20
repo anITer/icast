@@ -122,26 +122,26 @@ const std::vector<DeviceInfo>& WindowCapturer::enum_devices()
     return _dev_list;
 }
 
-int WindowCapturer::resize_window_internal()
+int WindowCapturer::resize_window_internal(int x, int y, int width, int height)
 {
     if (_cur_dev_index < 0) {
-        return -1;
+        return 0;
     }
 
     XCWindow& window = _window_list[_cur_dev_index];
-    XWindowAttributes wndattr;
-    if(XGetWindowAttributes(_cur_display, window._handle, &wndattr) == 0) {
-        return -1;
+    bool is_size_changed = width != window._size._x || height != window._size._y;
+    window._position = { x, y };
+    window._size = { width, height };
+    _dev_list[_cur_dev_index]._pos_x = x;
+    _dev_list[_cur_dev_index]._pos_y = y;
+    _dev_list[_cur_dev_index]._width = width;
+    _dev_list[_cur_dev_index]._height = height;
+
+    if (is_size_changed) {
+        bind_device(_cur_dev_index);
     }
-    window._position = { wndattr.x, wndattr.y };
-    window._size = { wndattr.width, wndattr.height };
 
-    _dev_list[_cur_dev_index]._pos_x = wndattr.x;
-    _dev_list[_cur_dev_index]._pos_y = wndattr.y;
-    _dev_list[_cur_dev_index]._width = wndattr.width;
-    _dev_list[_cur_dev_index]._height = wndattr.height;
-
-    return bind_device(_cur_dev_index);
+    return is_size_changed;
 }
 
 int WindowCapturer::bind_device(int index)
@@ -202,23 +202,27 @@ int WindowCapturer::stop_device()
 int WindowCapturer::grab_frame(unsigned char *&buffer)
 {
     XCWindow& window = _window_list[_cur_dev_index];
-    XWindowAttributes wndattr;
-    if(XGetWindowAttributes(_cur_display, window._handle, &wndattr) == 0) {
+    Window tmp_wnd;
+    int x, y, pos_x, pos_y = 0;
+    unsigned int width, height, border, depth = 0;
+    if(XGetGeometry(_cur_display, (Window) (window._handle),
+                    &tmp_wnd, &x, &y, &width, &height, &border, &depth) == 0) {
         if (_update_event_callback) {
             _update_event_callback->on_device_updated();
         }
         return -1; // window might not be valid any more
     }
-    if(wndattr.width != window._size._x || wndattr.height != window._size._y) {
-        resize_window_internal();
+    XTranslateCoordinates(_cur_display, (Window) (window._handle),
+                          XDefaultRootWindow(_cur_display), x, y, &pos_x, &pos_y, &tmp_wnd);
+    fprintf(stderr, "current window area [%d, %d | %d, %d]\n", pos_x, pos_y, width, height);
+    if(resize_window_internal(pos_x, pos_y, width, height)) {
         if (_update_event_callback) {
             _update_event_callback->on_device_updated();
         }
         return -2; // window size changed. This will rebuild everything
     }
 
-    if(!XShmGetImage(_cur_display, window._handle,
-                     _cur_image, 0, 0, AllPlanes)) {
+    if(!XShmGetImage(_cur_display, window._handle, _cur_image, 0, 0, AllPlanes)) {
         if (_update_event_callback) {
             _update_event_callback->on_device_updated();
         }

@@ -121,6 +121,7 @@ int CursorCapturer::grab_frame(unsigned char *&buffer)
     XFree(_cur_image);
     // TODO:: just update area
     _cur_image = XFixesGetCursorImage(_cur_display);
+
     if (!_cur_image) {
         return -1;
     }

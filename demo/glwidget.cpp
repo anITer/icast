@@ -30,6 +30,7 @@
 #include "screen_capturer.h"
 #include "window_capturer.h"
 #include "cursor_capturer.h"
+#include "composite_capturer.h"
 
 static const int GL_WIDTH_ALIGN_SIZE = 2;
 static const float IDENTITY_MATRIX[16] = {
@@ -72,11 +73,11 @@ GLWidget::GLWidget(QWidget *parent):
     });
     timer->start(1);
 
-    capDevice = new
-     CursorCapturer();
+    winCapturer = new
 //     WindowCapturer();
-//     ScreenCapturer();
+     ScreenCapturer();
 //     CameraDevice();
+    capDevice = new CompositeCapturer((ICaptureDevice*) winCapturer);
     capDevice->set_update_callback(this);
     selectDevice();
 }
@@ -85,6 +86,11 @@ GLWidget::~GLWidget()
     delete timer;
     capDevice->stop_device();
     capDevice->unbind_device();
+    delete capDevice;
+    capDevice = nullptr;
+
+    delete winCapturer;
+    winCapturer = nullptr;
 }
 void GLWidget::selectDevice()
 {
@@ -92,14 +98,7 @@ void GLWidget::selectDevice()
     for (DeviceInfo info : list) {
         printf("find device with info [%s | %dx%d]\n", info._name.c_str(), info._width, info._height);
     }
-
-    // test code
-    WindowCapturer* winCap = new WindowCapturer();
-    const std::vector<DeviceInfo>& listWin = winCap->enum_devices();
-    ((CursorCapturer*) capDevice)->set_parent_window(((WindowCapturer::XCWindow*)(listWin[6]._ext_data))->_handle);
-    delete winCap;
-
-    capDevice->bind_device(4);
+    capDevice->bind_device(0);
     DeviceInfo* info = capDevice->get_cur_device();
     texWidth = info->_width;
     texHeight = info->_height;

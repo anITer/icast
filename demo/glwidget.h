@@ -85,7 +85,8 @@ private:
     int texWidth = 0;
     int texHeight = 0;
     bool isSizeChanged = false;
-    ICaptureDevice* capDevice;
+    ICaptureDevice* capDevice = nullptr;
+    ICaptureDevice* winCapturer = nullptr;
 };
 
 #endif // GL_WIDGET_H
