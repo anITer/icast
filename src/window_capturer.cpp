@@ -214,7 +214,6 @@ int WindowCapturer::grab_frame(unsigned char *&buffer)
     }
     XTranslateCoordinates(_cur_display, (Window) (window._handle),
                           XDefaultRootWindow(_cur_display), x, y, &pos_x, &pos_y, &tmp_wnd);
-    fprintf(stderr, "current window area [%d, %d | %d, %d]\n", pos_x, pos_y, width, height);
     if(resize_window_internal(pos_x, pos_y, width, height)) {
         if (_update_event_callback) {
             _update_event_callback->on_device_updated();

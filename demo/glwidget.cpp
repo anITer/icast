@@ -74,8 +74,8 @@ GLWidget::GLWidget(QWidget *parent):
     timer->start(1);
 
     winCapturer = new
-//     WindowCapturer();
-     ScreenCapturer();
+     WindowCapturer();
+//     ScreenCapturer();
 //     CameraDevice();
     capDevice = new CompositeCapturer((ICaptureDevice*) winCapturer);
     capDevice->set_update_callback(this);

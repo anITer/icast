@@ -116,7 +116,6 @@ int CursorCapturer::grab_frame(unsigned char *&buffer)
     XQueryPointer(_cur_display, _cur_window, &child_win, &root_win, &root_x, &root_y, &x, &y, &mask);
     _dev_list[_cur_dev_index]._pos_x = x;
     _dev_list[_cur_dev_index]._pos_y = y;
-    fprintf(stderr, "current pos of cursor is [%d, %d | %d, %d | %u]\n", root_x, root_y, x, y, mask);
 
     XFree(_cur_image);
     // TODO:: just update area
@@ -126,9 +125,10 @@ int CursorCapturer::grab_frame(unsigned char *&buffer)
         return -1;
     }
     if (sizeof(_cur_image->pixels[0]) == 8) { // if the pixelstride is 64 bits.. scale down to 32bits
-        int* pixels = (int *)_cur_image->pixels;
+        int* pixels = (int *) _cur_image->pixels;
+        long* original = (long *) _cur_image->pixels;
         for (int i = 0; i < _cur_image->width * _cur_image->height; ++i) {
-            pixels[i] = pixels[i * 2];
+            pixels[i] = (int) (original[i]);
         }
     }
 
