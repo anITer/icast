@@ -23,6 +23,7 @@
  */
 #include "cursor_capturer.h"
 #include <cassert>
+#include <cstring>
 
 CursorCapturer::CursorCapturer() : _cur_window()
 {
@@ -114,11 +115,15 @@ int CursorCapturer::grab_frame(unsigned char *&buffer)
     _dev_list[_cur_dev_index]._pos_y = _cur_image->y;
 
     // if the pixelstride is 64 bits.. scale down to 32bits
-    if (sizeof(_cur_image->pixels[0]) == 8 && last_state != _cur_image->cursor_serial) {
+    if (last_state != _cur_image->cursor_serial) {
         int* pixels = (int *) _dev_list[_cur_dev_index]._thumbnail;
-        long* original = (long *) _cur_image->pixels;
-        for (int i = 0; i < _cur_image->width * _cur_image->height; ++i) {
-            pixels[i] = (int) (original[i]);
+        if (sizeof(_cur_image->pixels[0]) == 8) {
+            long* original = (long *) _cur_image->pixels;
+            for (int i = 0; i < _cur_image->width * _cur_image->height; ++i) {
+                pixels[i] = (int) (original[i]);
+            }
+        } else {
+            memcpy(pixels, _cur_image->pixels, _cur_image->width * _cur_image->height * 4);
         }
     }
     last_state = _cur_image->cursor_serial;
