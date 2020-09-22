@@ -280,6 +280,10 @@ int v4l2_enum_format(v4l2_device_t* device, v4l2_format_t* format) {
 
     return V4L2_STATUS_OK;
 }
+int v4l2_set_param(v4l2_device_t* device, v4l2_streamparm* param)
+{
+    return xioctl(device->_fd, VIDIOC_S_PARM, param);
+}
 
 int v4l2_start_capture(v4l2_device_t *device) {
 	//allocate data buffer

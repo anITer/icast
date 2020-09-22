@@ -98,7 +98,7 @@ int ScreenCapturer::bind_device(int index)
     _cur_dev_index = index;
     DeviceInfo& info = _dev_list[index];
     XCScreen& screen = *((XCScreen*) info._ext_data);
-    _cur_display = XOpenDisplay(NULL);
+    _cur_display = XOpenDisplay(":0.0");
     if(!_cur_display) {
         return -1;
     }

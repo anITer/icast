@@ -53,7 +53,7 @@ DeviceInfo* CompositeCapturer::get_cur_device()
 
 int CompositeCapturer::bind_device(int index)
 {
-    if (_cursor_cap_device) _cursor_cap_device->bind_device(index);
+    if (_cursor_cap_device) _cursor_cap_device->bind_device(0);
     return _window_cap_device->bind_device(index);
 }
 

@@ -22,6 +22,7 @@
  * SOFTWARE.
  */
 #include "cursor_capturer.h"
+#include <cassert>
 
 CursorCapturer::CursorCapturer() : _cur_window()
 {
@@ -37,18 +38,24 @@ CursorCapturer::~CursorCapturer()
 const std::vector<DeviceInfo>& CursorCapturer::enum_devices()
 {
     clear_devices();
-    // place holder
-    _dev_list.push_back({ PIXEL_FORMAT_RGBA, 0, 0, 0, 0, "cursor", 0, &_cur_image });
-    return _dev_list;
-}
 
-void CursorCapturer::set_parent_window(const XID& window)
-{
-    _cur_window = window;
+    Display* display = XOpenDisplay(NULL);
+    if (!display) {
+        return _dev_list;
+    }
+    XFixesCursorImage* image = XFixesGetCursorImage(display);
+    if (!image) {
+        return _dev_list;
+    }
+    _dev_list.push_back({ PIXEL_FORMAT_RGBA, image->x, image->y, image->width, image->height, image->name, 0, &_cur_image });
+    XFree(image);
+    XCloseDisplay(display);
+    return _dev_list;
 }
 
 int CursorCapturer::bind_device(int index)
 {
+    assert(index == 0);
     unbind_device();
 
     _cur_dev_index = index;
@@ -56,9 +63,7 @@ int CursorCapturer::bind_device(int index)
     if (!_cur_display) {
         return -1;
     }
-    if (!_cur_window) {
-        _cur_window = DefaultRootWindow(_cur_display);
-    }
+    _cur_window = DefaultRootWindow(_cur_display);
     if (!_cur_window) {
         return -1;
     }
@@ -67,16 +72,10 @@ int CursorCapturer::bind_device(int index)
         return -1;
     }
 
-    if (sizeof(_cur_image->pixels[0]) == 8) { // if the pixelstride is 64 bits.. scale down to 32bits
-        int* pixels = (int *)_cur_image->pixels;
-        for (int i = 0; i < _cur_image->width * _cur_image->height; ++i) {
-            pixels[i] = pixels[i * 2];
-        }
-    }
-
-    _dev_list[_cur_dev_index]._thumbnail = (uint8_t*) _cur_image->pixels;
+    _dev_list[_cur_dev_index]._thumbnail = (uint8_t*) malloc(_cur_image->width * _cur_image->height * sizeof(int));
     _dev_list[_cur_dev_index]._width = _cur_image->width;
     _dev_list[_cur_dev_index]._height = _cur_image->height;
+    XFree(_cur_image);
 
     return 0;
 }
@@ -84,8 +83,8 @@ int CursorCapturer::bind_device(int index)
 int CursorCapturer::unbind_device()
 {
     if(_cur_image) {
+        free(_dev_list[_cur_dev_index]._thumbnail);
         _dev_list[_cur_dev_index]._thumbnail = nullptr;
-        XFree(_cur_image);
         _cur_image = nullptr;
     }
     if(_cur_display) {
@@ -108,31 +107,24 @@ int CursorCapturer::stop_device()
 
 int CursorCapturer::grab_frame(unsigned char *&buffer)
 {
-    // Get the mouse cursor position
-    int x, y = 0; // coordinate to parent window
-    int root_x, root_y = 0; // coordinate to root window
-    unsigned int mask = 0; // 0 for button_up, 256 for left_button_down, 1024 for right button_up
-    XID child_win, root_win;
-    XQueryPointer(_cur_display, _cur_window, &child_win, &root_win, &root_x, &root_y, &x, &y, &mask);
-    _dev_list[_cur_dev_index]._pos_x = x;
-    _dev_list[_cur_dev_index]._pos_y = y;
-
-    XFree(_cur_image);
-    // TODO:: just update area
     _cur_image = XFixesGetCursorImage(_cur_display);
+    if (!_cur_image) return -1;
 
-    if (!_cur_image) {
-        return -1;
-    }
-    if (sizeof(_cur_image->pixels[0]) == 8) { // if the pixelstride is 64 bits.. scale down to 32bits
-        int* pixels = (int *) _cur_image->pixels;
+    _dev_list[_cur_dev_index]._pos_x = _cur_image->x;
+    _dev_list[_cur_dev_index]._pos_y = _cur_image->y;
+
+    // if the pixelstride is 64 bits.. scale down to 32bits
+    if (sizeof(_cur_image->pixels[0]) == 8 && last_state != _cur_image->cursor_serial) {
+        int* pixels = (int *) _dev_list[_cur_dev_index]._thumbnail;
         long* original = (long *) _cur_image->pixels;
         for (int i = 0; i < _cur_image->width * _cur_image->height; ++i) {
             pixels[i] = (int) (original[i]);
         }
     }
+    last_state = _cur_image->cursor_serial;
 
-    buffer = (unsigned char*) _cur_image->pixels;
+    buffer = (unsigned char*) (_dev_list[_cur_dev_index]._thumbnail);
+    XFree(_cur_image);
     return _cur_image->width * _cur_image->height * 4;
 }
 

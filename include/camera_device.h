@@ -40,6 +40,7 @@ public:
     int start_device() override;
     int stop_device() override;
     int grab_frame(unsigned char* &buffer) override;
+    int set_fps(int fps);
 
 private:
     PixelFormat get_pixel_format(v4l2_format_t& format);

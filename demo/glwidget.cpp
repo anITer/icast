@@ -71,7 +71,7 @@ GLWidget::GLWidget(QWidget *parent):
     connect(timer, &QTimer::timeout, [=](){
         update();
     });
-    timer->start(1);
+    timer->start(33);
 
     winCapturer = new
      WindowCapturer();

@@ -39,8 +39,8 @@ public:
     int start_device() override;
     int stop_device() override;
     int grab_frame(unsigned char* &buffer) override;
-    void set_parent_window(const XID& window);
 private:
+    unsigned long last_state = 0;
     XID _cur_window = 0;
     XFixesCursorImage* _cur_image = nullptr;
     Display* _cur_display = nullptr;

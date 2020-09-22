@@ -67,6 +67,7 @@ size_t v4l2_get_buffer_size(v4l2_device_t* device);
 int v4l2_set_format(v4l2_device_t* device, v4l2_format_t* format, int res_index);
 int v4l2_get_format(v4l2_device_t* device, v4l2_format_t* format);
 int v4l2_enum_format(v4l2_device_t* device, v4l2_format_t* format);
+int v4l2_set_param(v4l2_device_t* device, v4l2_streamparm* param);
 
 int v4l2_start_capture(v4l2_device_t *device);
 int v4l2_stop_capture(v4l2_device_t *device);

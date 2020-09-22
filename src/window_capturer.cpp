@@ -110,11 +110,13 @@ const std::vector<DeviceInfo>& WindowCapturer::enum_devices()
         XID* array = (XID*) data;
         for(unsigned long i = 0; i < num_items; i++) {
             XID& w = array[i];
-            _window_list.push_back(create_window(display, w));
+            XCWindow tmp_wnd = create_window(display, w);
+            if (!strncmp(tmp_wnd._name, "", sizeof(tmp_wnd._name))) continue;
+            _window_list.push_back(tmp_wnd);
             _dev_list.push_back({ PIXEL_FORMAT_RGBA,
-                                  _window_list[i]._position._x, _window_list[i]._position._y,
-                                  _window_list[i]._size._x, _window_list[i]._size._y,
-                                  _window_list[i]._name, (int) i, &_window_list[i] });
+                                  tmp_wnd._position._x, tmp_wnd._position._y,
+                                  tmp_wnd._size._x, tmp_wnd._size._y,
+                                  tmp_wnd._name, (int) i, &tmp_wnd });
         }
         XFree(data);
     }

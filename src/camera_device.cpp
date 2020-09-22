@@ -127,6 +127,16 @@ int CameraDevice::grab_frame(unsigned char *&buffer)
     return _width * _height * 2;
 }
 
+int CameraDevice::set_fps(int fps)
+{
+    struct v4l2_streamparm param;
+    param.type = V4L2_BUF_TYPE_META_CAPTURE;
+    param.parm.capture.capturemode |= V4L2_CAP_TIMEPERFRAME;
+    param.parm.capture.timeperframe.numerator = 1;
+    param.parm.capture.timeperframe.denominator = fps;
+    return v4l2_set_param(_v4l2_cam, &param);
+}
+
 PixelFormat CameraDevice::get_pixel_format(v4l2_format_t& format)
 {
     switch(format._pixel_format) {
