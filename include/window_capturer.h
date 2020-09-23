@@ -31,35 +31,19 @@
 class WindowCapturer : public ICaptureDevice
 {
 public:
-struct XCPoint {
-    int _x;
-    int _y;
-};
-struct XCWindow {
-    XID _handle;
-    XCPoint _position;
-    XCPoint _size;
-    // Name will always be lower case. It is converted to lower case
-    // internally by the library for comparisons
-    char _name[128] = {0};
-};
-public:
-    WindowCapturer();
-    ~WindowCapturer() override;
+  WindowCapturer();
+  ~WindowCapturer() override;
 
-    const std::vector<DeviceInfo>& enum_devices() override;
-    int bind_device(int index) override;
-    int unbind_device() override;
-    int start_device() override;
-    int stop_device() override;
-    int grab_frame(unsigned char* &buffer) override;
+  const std::vector<DeviceInfo> enum_devices() override;
+  int bind_device(DeviceInfo& dev) override;
+  int unbind_device() override;
+  int grab_frame(unsigned char* &buffer) override;
 
 private:
-    int resize_window_internal(int x, int y, int width, int height);
-    std::vector<XCWindow> _window_list;
-    Display* _cur_display = nullptr;
-    XImage* _cur_image = nullptr;
-    XShmSegmentInfo* _shm_info = nullptr;
+  int resize_window_internal(int x, int y, int width, int height);
+  Display* cur_display_ = nullptr;
+  XImage* cur_image_ = nullptr;
+  XShmSegmentInfo* shm_info_ = nullptr;
 };
 
 #endif // WINDOW_CAPTURER_H

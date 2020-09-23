@@ -28,69 +28,46 @@
 #include <string>
 
 enum PixelFormat {
-    PIXEL_FORMAT_RGBA = 0,
-    PIXEL_FORMAT_RGB,
-    PIXEL_FORMAT_I420,
-    PIXEL_FORMAT_NV21,
-    PIXEL_FORMAT_YUYV
+  PIXEL_FORMAT_RGBA = 0,
+  PIXEL_FORMAT_RGB,
+  PIXEL_FORMAT_I420,
+  PIXEL_FORMAT_NV21,
+  PIXEL_FORMAT_YUYV
 };
 
 struct DeviceInfo {
-    PixelFormat _format;
-    int _pos_x = 0;
-    int _pos_y = 0;
-    int _width = 0;
-    int _height = 0;
-    std::string _name;
-    int _dev_id;
-    // point to device
-    void* _ext_data;
-    u_int8_t* _thumbnail = nullptr;
-};
-
-class OnDeviceUpdateCallback
-{
-public:
-    virtual int on_device_updated() = 0;
+  PixelFormat format_;
+  int pos_x_ = 0;
+  int pos_y_ = 0;
+  int width_ = 0;
+  int height_ = 0;
+  unsigned long dev_id_;
+  std::string name_;
+  u_int8_t* ext_data_ = nullptr;
 };
 
 class ICaptureDevice
 {
 public:
-    ICaptureDevice() : _dev_list() { }
-    virtual ~ICaptureDevice()
-    {
-        clear_devices();
-    }
-public:
-    virtual const std::vector<DeviceInfo>& enum_devices() = 0;
-    virtual int bind_device(int index) = 0;
-    virtual int unbind_device() = 0;
-    virtual int start_device() = 0;
-    virtual int stop_device() = 0;
-    virtual int grab_frame(unsigned char* &buffer) = 0;
-
-    virtual void clear_devices()
-    {
-        for (DeviceInfo& dev : _dev_list) {
-            if (dev._thumbnail) free(dev._thumbnail);
-        }
-        _dev_list.clear();
-    }
-
-    virtual DeviceInfo* get_cur_device()
-    { return _cur_dev_index >= 0 ? &_dev_list[_cur_dev_index] : nullptr; }
-
-    virtual void set_update_callback(OnDeviceUpdateCallback* callback)
-    { _update_event_callback = callback; }
-
-    virtual void remove_update_callback()
-    { _update_event_callback = nullptr; }
+  ICaptureDevice() { }
+  virtual const std::vector<DeviceInfo> enum_devices() = 0;
+  virtual int bind_device(DeviceInfo& dev) = 0;
+  virtual int unbind_device() { return 0; }
+  virtual int start_device() { return 0; }
+  virtual int stop_device() { return 0; }
+  /**
+   * @brief grab_frame, get buffer of the updated frame
+   * @param buffer, pointer will be set to the pixel buffer
+   * @return value equals 0 stands for nothing changed (no need to render),
+   *         value bigger than 0 means things changed (result is the length of updated buffer),
+   *         value smaller than 0 means some exception occurred
+   */
+  virtual int grab_frame(unsigned char* &buffer) = 0;
+  virtual DeviceInfo& get_cur_device() { return cur_dev_; }
+  virtual ~ICaptureDevice() { unbind_device(); }
 
 protected:
-    OnDeviceUpdateCallback* _update_event_callback = nullptr;
-    std::vector<DeviceInfo> _dev_list;
-    int _cur_dev_index = -1;
+  DeviceInfo cur_dev_;
 };
 
 #endif // CAPTURE_DEVICE_H

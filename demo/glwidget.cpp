@@ -24,7 +24,7 @@
 #include "glwidget.h"
 #include <time.h>
 #include <QPainter>
-#include <QTime>
+#include <QElapsedTimer>
 #include <QKeyEvent>
 #include "camera_device.h"
 #include "screen_capturer.h"
@@ -78,7 +78,6 @@ GLWidget::GLWidget(QWidget *parent):
 //     ScreenCapturer();
 //     CameraDevice();
     capDevice = new CompositeCapturer((ICaptureDevice*) winCapturer);
-    capDevice->set_update_callback(this);
     selectDevice();
 }
 GLWidget::~GLWidget()
@@ -96,29 +95,30 @@ void GLWidget::selectDevice()
 {
     const std::vector<DeviceInfo>& list = capDevice->enum_devices();
     for (DeviceInfo info : list) {
-        printf("find device with info [%s | %dx%d]\n", info._name.c_str(), info._width, info._height);
+        printf("find device with info [%s | %dx%d]\n", info.name_.c_str(), info.width_, info.height_);
     }
-    capDevice->bind_device(0);
-    DeviceInfo* info = capDevice->get_cur_device();
-    texWidth = info->_width;
-    texHeight = info->_height;
-    curFormat = info->_format;
+    DeviceInfo dev = list[0];
+    capDevice->bind_device(dev);
+    DeviceInfo& info = capDevice->get_cur_device();
+    texWidth = info.width_;
+    texHeight = info.height_;
+    curFormat = info.format_;
     isSizeChanged = true;
     capDevice->start_device();
 
     resize(texWidth, texHeight);
 }
-int GLWidget::on_device_updated()
+int GLWidget::isDeviceUpdated()
 {
-    DeviceInfo* info = capDevice->get_cur_device();
-    int w = info->_width;
-    int h = info->_height;
+    DeviceInfo& info = capDevice->get_cur_device();
+    int w = info.width_;
+    int h = info.height_;
     if (w != texWidth || h != texHeight) {
         isSizeChanged = true;
     }
     texWidth = w;
     texHeight = h;
-    return 0;
+    return isSizeChanged;
 }
 void GLWidget::initializeGL()
 {
@@ -139,6 +139,7 @@ void GLWidget::paintGL()
 
     unsigned char* pixels = nullptr;
     if (capDevice->grab_frame(pixels) > 0) {
+        if (isDeviceUpdated()) resetTextureSize();
         // dump original pixel buffer
         // FILE* tmp = fopen("/tmp/test.raw", "w");
         // fwrite(pixels, width * height * 4, 1, tmp);
@@ -164,8 +165,6 @@ void GLWidget::paintGL()
     // fclose(tmp);
 
     glUseProgram(0);
-
-    if (isSizeChanged) resetTextureSize();
 
     calcFPS();
     paintFPS();
@@ -222,7 +221,7 @@ void GLWidget::resetTextureSize()
 }
 void GLWidget::calcFPS()
 {
-    static QTime time;
+    static QElapsedTimer time;
     static int once = [=](){time.start(); return 0;}();
     Q_UNUSED(once)
     static int frame = 0;

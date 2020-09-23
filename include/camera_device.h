@@ -31,23 +31,23 @@
 class CameraDevice : public ICaptureDevice
 {
 public:
-    CameraDevice();
-    ~CameraDevice();
+  CameraDevice();
+  ~CameraDevice();
 
-    const std::vector<DeviceInfo>& enum_devices() override;
-    int bind_device(int index) override;
-    int unbind_device() override;
-    int start_device() override;
-    int stop_device() override;
-    int grab_frame(unsigned char* &buffer) override;
-    int set_fps(int fps);
+  const std::vector<DeviceInfo> enum_devices() override;
+  int bind_device(DeviceInfo& info) override;
+  int unbind_device() override;
+  int start_device() override;
+  int stop_device() override;
+  int grab_frame(unsigned char* &buffer) override;
+  int set_fps(int fps);
 
 private:
-    PixelFormat get_pixel_format(v4l2_format_t& format);
+  PixelFormat get_pixel_format(v4l2_format_t& format);
 
-    int _width = 0;
-    int _height = 0;
-    v4l2_device_t* _v4l2_cam = nullptr;
+  int _width = 0;
+  int _height = 0;
+  v4l2_device_t* v4l2_cam_ = nullptr;
 };
 
 #endif // CAMERA_DEVICE_H

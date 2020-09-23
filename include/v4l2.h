@@ -34,26 +34,26 @@ extern "C"{
 #define V4L2_STATUS_OK 1
 #define V4L2_STATUS_ERROR -1
 
-typedef struct {
-    void *_start;
-    size_t _length;
-    v4l2_memory _type = V4L2_MEMORY_MMAP;
+typedef struct v4l2_buffer_s {
+  void *start_;
+  size_t length_;
+  v4l2_memory type_ = V4L2_MEMORY_MMAP;
 } v4l2_buffer_t;
 
-typedef struct {
-    unsigned int _width[32];
-    unsigned int _height[32];
-    unsigned int _pixel_format;
-    unsigned int _reslution_num;
+typedef struct v4l2_format_s {
+  unsigned int width_[32];
+  unsigned int height_[32];
+  unsigned int pixel_format_;
+  unsigned int reslution_num_;
 } v4l2_format_t;
 
-typedef struct {
-    char _name[32];
-    int _fd;
-    unsigned int _num_buffers;
-    v4l2_buffer_t* _buffers;
-    v4l2_format_t _format;
-    unsigned char* _data;
+typedef struct v4l2_device_s {
+  char name_[32];
+  int fd_;
+  unsigned int num_buffers_;
+  v4l2_buffer_t* buffers_;
+  v4l2_format_t format_;
+  unsigned char* data_;
 } v4l2_device_t;
 
 v4l2_device_t* v4l2_create_device(const char* device_name);

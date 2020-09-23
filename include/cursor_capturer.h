@@ -31,19 +31,16 @@
 class CursorCapturer : public ICaptureDevice
 {
 public:
-    CursorCapturer();
-    ~CursorCapturer();
-    const std::vector<DeviceInfo>& enum_devices() override;
-    int bind_device(int index) override;
-    int unbind_device() override;
-    int start_device() override;
-    int stop_device() override;
-    int grab_frame(unsigned char* &buffer) override;
+  CursorCapturer();
+  ~CursorCapturer();
+  const std::vector<DeviceInfo> enum_devices() override;
+  int bind_device(DeviceInfo& dev) override;
+  int unbind_device() override;
+  int grab_frame(unsigned char* &buffer) override;
 private:
-    unsigned long last_state = 0;
-    XID _cur_window = 0;
-    XFixesCursorImage* _cur_image = nullptr;
-    Display* _cur_display = nullptr;
+  XFixesCursorImage* cur_image_ = nullptr;
+  Display* cur_display_ = nullptr;
+  unsigned long last_cursor_state_ = 0;
 };
 
 #endif // CURSOR_UTIL_H

@@ -29,23 +29,20 @@
 class CompositeCapturer : public ICaptureDevice
 {
 public:
-    CompositeCapturer(ICaptureDevice* window_cap);
-    ~CompositeCapturer();
+  CompositeCapturer(ICaptureDevice* window_cap);
+  ~CompositeCapturer();
 
-    const std::vector<DeviceInfo>& enum_devices() override;
-    DeviceInfo* get_cur_device() override;
-    int bind_device(int index) override;
-    int unbind_device() override;
-    int start_device() override;
-    int stop_device() override;
-    int grab_frame(unsigned char* &buffer) override;
-    void clear_devices() override;
-    void set_update_callback(OnDeviceUpdateCallback* callback) override;
-    void remove_update_callback() override;
+  const std::vector<DeviceInfo> enum_devices() override;
+  int bind_device(DeviceInfo& dev) override;
+  int unbind_device() override;
+  DeviceInfo& get_cur_device() override;
+  int grab_frame(unsigned char* &buffer) override;
+  void set_enable_cursor(bool is_enable) { is_cursor_enabled_ = is_enable; }
 
 private:
-    ICaptureDevice* _window_cap_device = nullptr;
-    CursorCapturer* _cursor_cap_device = nullptr;
+  ICaptureDevice* window_cap_device_ = nullptr;
+  CursorCapturer* cursor_cap_device_ = nullptr;
+  bool      is_cursor_enabled_ = true;
 };
 
 #endif // COMPOSITE_CAPTURER_H

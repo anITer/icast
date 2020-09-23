@@ -31,42 +31,18 @@
 class ScreenCapturer : public ICaptureDevice
 {
 public:
-struct XCScreen {
-    int _id = INT32_MAX;
-    int _index = INT32_MAX;
-    int _adapter = INT32_MAX;
-    int _width = 0;
-    int _height = 0;
-    int _original_width = 0;
-    int _original_height = 0;
-    // Offsets are the number of pixels that a monitor can be from the origin.
-    // For example, users can shuffle their monitors around so this affects their offset.
-    int _offset_x = 0;
-    int _offset_y = 0;
-    int _original_offset_x = 0;
-    int _original_offset_y = 0;
-    char _name[128] = {0};
-    float _scaling = 1.0f;
-};
+  ScreenCapturer();
+  virtual ~ScreenCapturer();
 
-public:
-    ScreenCapturer();
-    virtual ~ScreenCapturer();
-
-    virtual const std::vector<DeviceInfo>& enum_devices() override;
-    int bind_device(int index) override;
-    int unbind_device() override;
-    int start_device() override;
-    int stop_device() override;
-    int grab_frame(unsigned char* &buffer) override;
-
-protected:
-    std::vector<XCScreen> _screen_list;
+  virtual const std::vector<DeviceInfo> enum_devices() override;
+  int bind_device(DeviceInfo& dev) override;
+  int unbind_device() override;
+  int grab_frame(unsigned char* &buffer) override;
 
 private:
-    Display* _cur_display = nullptr;
-    XImage* _cur_image = nullptr;
-    XShmSegmentInfo* _shm_info = nullptr;
+  Display* cur_display_ = nullptr;
+  XImage* cur_image_ = nullptr;
+  XShmSegmentInfo* shm_info_ = nullptr;
 };
 
 #endif // SCREEN_CAPTURER_H

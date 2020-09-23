@@ -31,8 +31,7 @@
 #include "capture_interface.h"
 
 class GLWidget: public QOpenGLWidget,
-                protected QOpenGLFunctions,
-                protected OnDeviceUpdateCallback
+                protected QOpenGLFunctions
 {
 	Q_OBJECT
 public:
@@ -52,7 +51,7 @@ protected:
 private:
     void selectDevice(); // test function
     void resetTextureSize();
-    int on_device_updated() override;
+    int isDeviceUpdated();
 
     int wndWidth = 0;
     int wndHeight = 0;
