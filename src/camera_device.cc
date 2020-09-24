@@ -23,12 +23,13 @@
  */
 #include "camera_device.h"
 #include <algorithm>
+#include <cstring>
 
 const std::string DEVICE_PREFIX = "/dev/video";
 
 CameraDevice::CameraDevice()
 {
-
+  cur_dev_.name_ = "";
 }
 
 CameraDevice::~CameraDevice()
@@ -84,6 +85,7 @@ int CameraDevice::unbind_device()
   if (!v4l2_cam_) return 0;
   v4l2_destroy_device(v4l2_cam_);
   v4l2_cam_ = nullptr;
+  cur_dev_.name_ = "";
   return 0;
 }
 

@@ -23,6 +23,7 @@
  */
 #include "composite_capturer.h"
 #include <cassert>
+#include <cstring>
 #include <iostream>
 
 CompositeCapturer::CompositeCapturer(ICaptureDevice* window_cap) : window_cap_device_(window_cap)
@@ -50,8 +51,9 @@ int CompositeCapturer::bind_device(DeviceInfo& dev)
 {
   if (cursor_cap_device_) {
     // todo: maybe use window (dev.dev_id_) of dev
-    DeviceInfo tmp;
-    cursor_cap_device_->bind_device(tmp);
+    static DeviceInfo empty;
+    memset(&empty, 0x0, sizeof(DeviceInfo));
+    cursor_cap_device_->bind_device(empty);
   }
   return window_cap_device_->bind_device(dev);
 }

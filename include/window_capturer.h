@@ -27,6 +27,7 @@
 #include "capture_interface.h"
 #include <X11/Xlib.h>
 #include <X11/extensions/XShm.h>
+#include <X11/extensions/Xdamage.h>
 
 class WindowCapturer : public ICaptureDevice
 {
@@ -40,10 +41,17 @@ public:
   int grab_frame(unsigned char* &buffer) override;
 
 private:
+  bool is_window_redrawed();
   int resize_window_internal(int x, int y, int width, int height);
   Display* cur_display_ = nullptr;
   XImage* cur_image_ = nullptr;
   XShmSegmentInfo* shm_info_ = nullptr;
+
+  // adaptive fps related
+  Damage damage_handle_ = 0;
+  int damage_event_base_ = 0;
+  int damage_error_base_ = 0;
+  XserverRegion damage_region_ = 0;
 };
 
 #endif // WINDOW_CAPTURER_H

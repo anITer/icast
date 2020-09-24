@@ -28,6 +28,7 @@
 #include <X11/Xutil.h>
 #include <sys/shm.h>
 #include <X11/extensions/Xinerama.h>
+#include <X11/extensions/Xcomposite.h>
 
 const std::string SCREEN_PREFIX = "Display_";
 
@@ -35,7 +36,10 @@ static DeviceInfo create_device(Display* display, XID& window)
 {
   XTextProperty property;
   XGetWMName(display, window, &property);
-  std::string name((char *)property.value);
+  int cnt = 0;
+  char** list = nullptr;
+  Xutf8TextPropertyToTextList(display, &property, &list, &cnt);
+  std::string name(cnt ? (char *)list[0] : "");
   DeviceInfo dev;
   dev.dev_id_ = window;
   dev.name_ = name;
@@ -54,7 +58,7 @@ static DeviceInfo create_device(Display* display, XID& window)
 
 WindowCapturer::WindowCapturer()
 {
-
+  cur_dev_.dev_id_ = 0;
 }
 
 WindowCapturer::~WindowCapturer()
@@ -89,6 +93,24 @@ const std::vector<DeviceInfo> WindowCapturer::enum_devices()
   }
   XCloseDisplay(display);
   return dev_list;
+}
+
+bool WindowCapturer::is_window_redrawed()
+{
+  if (!damage_event_base_) return true;
+  int events_to_process = XPending(cur_display_);
+  XEvent e;
+  for (int i = 0; i < events_to_process; i++) {
+    XNextEvent(cur_display_, &e);
+    if (e.type == damage_event_base_ + XDamageNotify) {
+      if (((XDamageNotifyEvent *)&e)->damage == damage_handle_) {
+        fprintf(stderr, "is_window_redrawed: true\n");
+        return true;
+      }
+    }
+  }
+  fprintf(stderr, "is_window_redrawed: false\n");
+  return false;
 }
 
 int WindowCapturer::resize_window_internal(int x, int y, int width, int height)
@@ -135,11 +157,34 @@ int WindowCapturer::bind_device(DeviceInfo& dev)
   shm_info_->shmaddr = cur_image_->data = (char*) shmat(shm_info_->shmid, 0, 0);
   XShmAttach(cur_display_, shm_info_);
 
+  // force preserve an off-screen storage for window even if it's in the background
+  XCompositeRedirectWindow(cur_display_, cur_dev_.dev_id_, CompositeRedirectAutomatic);
+
+//  XSelectInput(cur_display_, cur_dev_.dev_id_, StructureNotifyMask);
+  if (!XDamageQueryExtension(cur_display_, &damage_event_base_, &damage_error_base_)) {
+    damage_event_base_ = 0;
+    return 0;
+  }
+  damage_handle_ = XDamageCreate(cur_display_, cur_dev_.dev_id_, XDamageReportRawRectangles);
+  XRectangle rect = { (short)cur_dev_.pos_x_, (short)cur_dev_.pos_y_, (unsigned short)cur_dev_.width_, (unsigned short)cur_dev_.height_ };
+  damage_region_ = XFixesCreateRegion(cur_display_, &rect, 1);
+
   return 0;
 }
 
 int WindowCapturer::unbind_device()
 {
+  if (damage_handle_) {
+    XDamageDestroy(cur_display_, damage_handle_);
+    damage_handle_ = 0;
+  }
+  if (damage_region_) {
+    XFixesDestroyRegion(cur_display_, damage_region_);
+    damage_region_ = 0;
+  }
+  if (cur_dev_.dev_id_) {
+    XCompositeUnredirectWindow(cur_display_, cur_dev_.dev_id_, CompositeRedirectAutomatic);
+  }
   if(shm_info_) {
     shmdt(shm_info_->shmaddr);
     shmctl(shm_info_->shmid, IPC_RMID, 0);
@@ -155,6 +200,7 @@ int WindowCapturer::unbind_device()
     XCloseDisplay(cur_display_);
     cur_display_ = 0;
   }
+  cur_dev_.dev_id_ = 0;
   return 0;
 }
 
@@ -180,6 +226,7 @@ int WindowCapturer::grab_frame(unsigned char *&buffer)
     break;
   } while (true);
   // TODO:: check if content was changed
+  is_window_redrawed();
   buffer = (unsigned char*) cur_image_->data;
   return cur_dev_.width_ * cur_dev_.height_ * sizeof(int);
 }

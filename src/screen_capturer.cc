@@ -32,7 +32,7 @@ const std::string SCREEN_PREFIX = "Display_";
 
 ScreenCapturer::ScreenCapturer()
 {
-
+  cur_dev_.dev_id_ = 0;
 }
 
 ScreenCapturer::~ScreenCapturer()
@@ -87,6 +87,7 @@ int ScreenCapturer::bind_device(DeviceInfo& dev)
   Screen* screen = XScreenOfDisplay(cur_display_, scr_id);
   cur_dev_.width_ = XWidthOfScreen(screen);
   cur_dev_.height_ = XHeightOfScreen(screen);
+  cur_dev_.dev_id_ = scr_id;
   
   shm_info_ = new XShmSegmentInfo();
   cur_image_ = XShmCreateImage(cur_display_, screen->root_visual, screen->root_depth,
@@ -116,13 +117,14 @@ int ScreenCapturer::unbind_device()
     XCloseDisplay(cur_display_);
     cur_display_ = 0;
   }
+  cur_dev_.dev_id_ = 0;
   return 0;
 }
 
 int ScreenCapturer::grab_frame(unsigned char *&buffer)
 {
   if (!cur_display_) return 0;
-  if(!XShmGetImage(cur_display_, RootWindow(cur_display_, DefaultScreen(cur_display_)),
+  if(!XShmGetImage(cur_display_, RootWindow(cur_display_, cur_dev_.dev_id_),
            cur_image_, cur_dev_.pos_x_, cur_dev_.pos_y_, AllPlanes)) {
     return -1;
   }

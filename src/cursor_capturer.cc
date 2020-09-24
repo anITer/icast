@@ -26,7 +26,7 @@
 
 CursorCapturer::CursorCapturer()
 {
-
+  cur_dev_.dev_id_ = 0;
 }
 
 CursorCapturer::~CursorCapturer()
@@ -80,7 +80,6 @@ int CursorCapturer::bind_device(DeviceInfo& dev)
   }
 
   cur_dev_.ext_data_ = (uint8_t *)malloc(grab_frame(cur_dev_.ext_data_));
-  XFree(cur_image_);
 
   return 0;
 }
@@ -95,8 +94,8 @@ int CursorCapturer::unbind_device()
   if(cur_display_) {
     XCloseDisplay(cur_display_);
     cur_display_ = nullptr;
-    cur_dev_.dev_id_ = 0;
   }
+  cur_dev_.dev_id_ = 0;
   return 0;
 }
 
@@ -111,8 +110,8 @@ int CursorCapturer::grab_frame(unsigned char *&buffer)
                       || cur_dev_.pos_y_ != cur_image_->y
                       || cur_dev_.width_ != cur_image_->width
                       || cur_dev_.height_ != cur_image_->height;
-  cur_dev_.pos_x_ = cur_image_->x;
-  cur_dev_.pos_y_ = cur_image_->y;
+  cur_dev_.pos_x_ = cur_image_->x - cur_image_->xhot;
+  cur_dev_.pos_y_ = cur_image_->y - cur_image_->yhot;
   cur_dev_.width_ = cur_image_->width;
   cur_dev_.height_ = cur_image_->height;
 
@@ -134,6 +133,7 @@ int CursorCapturer::grab_frame(unsigned char *&buffer)
 
   last_cursor_state_ = cur_image_->cursor_serial;
   buffer = (unsigned char *)cur_dev_.ext_data_;
+  XFree(cur_image_);
   return (is_pos_changed || is_state_changed) ? pixel_size * sizeof(int) : 0;
 }
 

@@ -28,11 +28,11 @@ add_library(icast SHARED
   src/cursor_capturer.cc
   src/composite_capturer.cc
 )
-target_link_libraries(icast ${X11_LIBRARIES}    # libx11-dev
-                            ${X11_Xfixes_LIB}   # libxfixes-dev
-                            ${X11_Xdamage_LIB}  # libxdamage-dev
-                            ${X11_XTest_LIB}    # libxtst-dev
-                            ${X11_Xinerama_LIB} # libxinerama-dev
+target_link_libraries(icast ${X11_LIBRARIES}       # libx11-dev
+                            ${X11_Xfixes_LIB}      # libxfixes-dev
+                            ${X11_Xdamage_LIB}     # libxdamage-dev
+                            ${X11_Xinerama_LIB}    # libxinerama-dev
+                            ${X11_Xcomposite_LIB}  # libxcomposite-dev
                         )
 
 # Next lines needed for building all Qt projects
