@@ -24,25 +24,15 @@
 #ifndef SCREEN_CAPTURER_H
 #define SCREEN_CAPTURER_H
 
-#include "capture_interface.h"
-#include <X11/Xlib.h>
-#include <X11/extensions/XShm.h>
+#include "window_capturer.h"
 
-class ScreenCapturer : public ICaptureDevice
+class ScreenCapturer : public WindowCapturer
 {
 public:
-  ScreenCapturer();
-  virtual ~ScreenCapturer();
-
   virtual const std::vector<DeviceInfo> enum_devices() override;
-  int bind_device(DeviceInfo& dev) override;
-  int unbind_device() override;
-  int grab_frame(unsigned char* &buffer) override;
+  int bind_device(DeviceInfo dev) override;
 
 private:
-  Display* cur_display_ = nullptr;
-  XImage* cur_image_ = nullptr;
-  XShmSegmentInfo* shm_info_ = nullptr;
 };
 
 #endif // SCREEN_CAPTURER_H

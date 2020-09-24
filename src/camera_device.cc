@@ -68,7 +68,7 @@ const std::vector<DeviceInfo> CameraDevice::enum_devices()
   return dev_list;
 }
 
-int CameraDevice::bind_device(DeviceInfo& dev)
+int CameraDevice::bind_device(DeviceInfo dev)
 {
   unbind_device();
 

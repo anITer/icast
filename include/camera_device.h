@@ -35,7 +35,7 @@ public:
   ~CameraDevice();
 
   const std::vector<DeviceInfo> enum_devices() override;
-  int bind_device(DeviceInfo& info) override;
+  int bind_device(DeviceInfo info) override;
   int unbind_device() override;
   int start_device() override;
   int stop_device() override;

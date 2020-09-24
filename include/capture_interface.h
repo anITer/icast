@@ -51,7 +51,7 @@ class ICaptureDevice
 public:
   ICaptureDevice() { }
   virtual const std::vector<DeviceInfo> enum_devices() = 0;
-  virtual int bind_device(DeviceInfo& dev) = 0;
+  virtual int bind_device(DeviceInfo dev) = 0;
   virtual int unbind_device() { return 0; }
   virtual int start_device() { return 0; }
   virtual int stop_device() { return 0; }

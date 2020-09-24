@@ -22,23 +22,10 @@
  * SOFTWARE.
  */
 #include "screen_capturer.h"
-#include <assert.h>
 #include <string.h>
-#include <X11/Xutil.h>
-#include <sys/shm.h>
 #include <X11/extensions/Xinerama.h>
 
 const std::string SCREEN_PREFIX = "Display_";
-
-ScreenCapturer::ScreenCapturer()
-{
-  cur_dev_.dev_id_ = 0;
-}
-
-ScreenCapturer::~ScreenCapturer()
-{
-
-}
 
 const std::vector<DeviceInfo> ScreenCapturer::enum_devices()
 {
@@ -73,62 +60,14 @@ const std::vector<DeviceInfo> ScreenCapturer::enum_devices()
   return dev_list;
 }
 
-int ScreenCapturer::bind_device(DeviceInfo& dev)
+int ScreenCapturer::bind_device(DeviceInfo dev)
 {
-  unbind_device();
+  Display* display = XOpenDisplay(NULL);
+  if(!display) return -1;
 
-  cur_display_ = XOpenDisplay(NULL);
-  if(!cur_display_) {
-    return -1;
-  }
-  cur_dev_ = dev;
+  int scr_id = dev.dev_id_ ? dev.dev_id_ : XDefaultScreen(display);
+  dev.dev_id_ = RootWindow(display, scr_id);
+  XCloseDisplay(display);
 
-  int scr_id = cur_dev_.dev_id_ ? cur_dev_.dev_id_ : XDefaultScreen(cur_display_);
-  Screen* screen = XScreenOfDisplay(cur_display_, scr_id);
-  cur_dev_.width_ = XWidthOfScreen(screen);
-  cur_dev_.height_ = XHeightOfScreen(screen);
-  cur_dev_.dev_id_ = scr_id;
-  
-  shm_info_ = new XShmSegmentInfo();
-  cur_image_ = XShmCreateImage(cur_display_, screen->root_visual, screen->root_depth,
-                ZPixmap, NULL, shm_info_, cur_dev_.width_, cur_dev_.height_);
-  shm_info_->shmid = shmget(IPC_PRIVATE, cur_image_->bytes_per_line * cur_image_->height, IPC_CREAT | 0777);
-  shm_info_->readOnly = false;
-  shm_info_->shmaddr = cur_image_->data = (char *)shmat(shm_info_->shmid, 0, 0);
-  XShmAttach(cur_display_, shm_info_);
-
-  return 0;
-}
-
-int ScreenCapturer::unbind_device()
-{
-  if(shm_info_) {
-    shmdt(shm_info_->shmaddr);
-    shmctl(shm_info_->shmid, IPC_RMID, 0);
-    XShmDetach(cur_display_, shm_info_);
-    delete shm_info_;
-    shm_info_ = nullptr;
-  }
-  if(cur_image_) {
-    XDestroyImage(cur_image_);
-    cur_image_ = nullptr;
-  }
-  if(cur_display_) {
-    XCloseDisplay(cur_display_);
-    cur_display_ = 0;
-  }
-  cur_dev_.dev_id_ = 0;
-  return 0;
-}
-
-int ScreenCapturer::grab_frame(unsigned char *&buffer)
-{
-  if (!cur_display_) return 0;
-  if(!XShmGetImage(cur_display_, RootWindow(cur_display_, cur_dev_.dev_id_),
-           cur_image_, cur_dev_.pos_x_, cur_dev_.pos_y_, AllPlanes)) {
-    return -1;
-  }
-  // TODO:: check if content was changed
-  buffer = (unsigned char*) cur_image_->data;
-  return cur_dev_.width_ * cur_dev_.height_ * sizeof(int);
+  return WindowCapturer::bind_device(dev);
 }

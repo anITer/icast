@@ -34,7 +34,7 @@ public:
   CursorCapturer();
   ~CursorCapturer();
   const std::vector<DeviceInfo> enum_devices() override;
-  int bind_device(DeviceInfo& dev) override;
+  int bind_device(DeviceInfo dev) override;
   int unbind_device() override;
   int grab_frame(unsigned char* &buffer) override;
 private:

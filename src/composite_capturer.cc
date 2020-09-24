@@ -47,11 +47,11 @@ const std::vector<DeviceInfo> CompositeCapturer::enum_devices()
   return window_cap_device_->enum_devices();
 }
 
-int CompositeCapturer::bind_device(DeviceInfo& dev)
+int CompositeCapturer::bind_device(DeviceInfo dev)
 {
   if (cursor_cap_device_) {
     // todo: maybe use window (dev.dev_id_) of dev
-    static DeviceInfo empty;
+    DeviceInfo empty;
     memset(&empty, 0x0, sizeof(DeviceInfo));
     cursor_cap_device_->bind_device(empty);
   }

@@ -104,6 +104,7 @@ bool WindowCapturer::is_window_redrawed()
     XNextEvent(cur_display_, &e);
     if (e.type == damage_event_base_ + XDamageNotify) {
       if (((XDamageNotifyEvent *)&e)->damage == damage_handle_) {
+        XDamageSubtract(cur_display_, damage_handle_, None, damage_region_);
         fprintf(stderr, "is_window_redrawed: true\n");
         return true;
       }
@@ -122,13 +123,15 @@ int WindowCapturer::resize_window_internal(int x, int y, int width, int height)
   cur_dev_.height_ = height;
 
   if (is_size_changed) {
-    bind_device(cur_dev_);
+    // avoid calling extended class function
+    // this should be internal behavior
+    WindowCapturer::bind_device(cur_dev_);
   }
 
   return is_size_changed;
 }
 
-int WindowCapturer::bind_device(DeviceInfo& dev)
+int WindowCapturer::bind_device(DeviceInfo dev)
 {
   unbind_device();
 
@@ -218,6 +221,7 @@ int WindowCapturer::grab_frame(unsigned char *&buffer)
     XTranslateCoordinates(cur_display_, (Window)(cur_dev_.dev_id_),
                         XDefaultRootWindow(cur_display_), x, y, &pos_x, &pos_y, &tmp_wnd);
     // if window size changed, rebuild memory mapping staffs
+    fprintf(stderr, "window info [%d, %d, | %dx%d]\n", pos_x, pos_y, width, height);
     resize_window_internal(pos_x, pos_y, width, height);
     if(!XShmGetImage(cur_display_, (Window)(cur_dev_.dev_id_), cur_image_, 0, 0, AllPlanes)) {
       // todo:: log error fetch buffer failed

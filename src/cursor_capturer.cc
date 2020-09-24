@@ -62,7 +62,7 @@ const std::vector<DeviceInfo> CursorCapturer::enum_devices()
   return dev_list;
 }
 
-int CursorCapturer::bind_device(DeviceInfo& dev)
+int CursorCapturer::bind_device(DeviceInfo dev)
 {
   unbind_device();
 
