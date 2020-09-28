@@ -11,50 +11,49 @@ class GLRenderer;
 
 class VideoWidget : public QWidget
 {
-    Q_OBJECT
+  Q_OBJECT
 public:
-    explicit VideoWidget(QWidget *parent = nullptr);
+  explicit VideoWidget(QWidget *parent = nullptr);
 
-    virtual ~VideoWidget();
+  virtual ~VideoWidget();
 
-    virtual QPaintEngine* paintEngine() const override;
+  virtual QPaintEngine* paintEngine() const override;
 
-    void render();
+  void render();
 
 public:
-    bool continuousRender = false;
+  bool continuousRender = false;
 
 protected:
-    virtual void paintEvent(QPaintEvent* paintEvent) override;
-    virtual void showEvent(QShowEvent* showEvent) override;
-    virtual void resizeEvent(QResizeEvent* resizeEvent) override;
-    virtual bool event(QEvent* event) override;
+  virtual void paintEvent(QPaintEvent* paintEvent) override;
+  virtual void showEvent(QShowEvent* showEvent) override;
+  virtual void resizeEvent(QResizeEvent* resizeEvent) override;
+  virtual bool event(QEvent* event) override;
 
 private:
-    void _doRender();
-    void _init();
+  void _doRender();
+  void _init();
 
-    void calcFPS();
-    void updateFPS(qreal);
-    void paintFPS();
+  void calcFPS();
+  void updateFPS(qreal);
+  void paintFPS();
 
 private:
-    bool mUpdatePending = false;
-    bool mIsInited = false;
+  bool mUpdatePending = false;
+  bool mIsInited = false;
 
-    void selectDevice(); // test function
-    GLRenderer* mGLRenderer = nullptr;
-    int wndWidth = 0;
-    int wndHeight = 0;
-    QTimer *timer;
-    qreal fps;
+  void selectDevice(); // test function
+  GLRenderer* mGLRenderer = nullptr;
+  int wndWidth = 0;
+  int wndHeight = 0;
+  QTimer *timer;
+  qreal fps;
 
-    PixelFormat curFormat;
-    int texWidth = 0;
-    int texHeight = 0;
-    bool isSizeChanged = false;
-    ICaptureDevice* capDevice = nullptr;
-    ICaptureDevice* winCapturer = nullptr;
+  PixelFormat curFormat;
+  int texWidth = 0;
+  int texHeight = 0;
+  ICaptureDevice* capDevice = nullptr;
+  ICaptureDevice* winCapturer = nullptr;
 
 };
 

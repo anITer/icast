@@ -27,6 +27,7 @@
 #include "program.h"
 #include "egl_core.h"
 #include "capture_interface.h"
+#include <pthread.h>
 
 class GLRenderer
 {
@@ -37,63 +38,63 @@ enum ScaleType
   SCALE_TYPE_SCALE_FIT,
   SCALE_TYPE_CROP_FIT,
 };
+
 public:
   GLRenderer();
   virtual ~GLRenderer();
 
-  virtual int setup();
-  virtual int destroy();
+  void start();
+  void stop();
 
-  virtual int upload_texture(uint8_t** data, int num_channel, int width, int height);
-  virtual int draw();
+  int upload_texture(uint8_t** data, int num_channel, int width, int height);
+  int bind_window(XID win_id);
+  void set_output_size(int width, int height);
+  void set_texture_format(PixelFormat format);
+  void set_scale_type(ScaleType type = SCALE_TYPE_SCALE_FIT);
 
-  virtual int bind_window(XID win_id);
-  virtual void set_output_size(int width, int height);
-  virtual void set_texture_format(PixelFormat format);
-  virtual void set_scale_type(ScaleType type = SCALE_TYPE_SCALE_FIT);
-
-protected:
+protected:  
+  int setup();
+  int destroy();
+  int draw();
   virtual int pre_draw();
   virtual int post_draw();
+  int upload_texture_internal();
+  int bind_window_internal();
   int check_texture_size(int width, int height);
   int setup_texture();
   int setup_program();
-  GLProgram *program_ = nullptr;
-  GLuint input_texture_ = 0;
+  static void* render_loop(void* data);
 
+  GLProgram *program_ = nullptr;
   int mvp_matrix_handle_ = -1;
   int vertices_handle_ = -1;
   int tex_coord_handle_ = -1;
   int tex_width_handle_ = -1;
   int color_map_handle_ = -1;
 
-  float vertices_[8] = {
-    -1, -1,
-     1, -1,
-    -1,  1,
-     1,  1,
-  };
-  float texcoords_[8] = {
-    0, 0,
-    1, 0,
-    0, 1,
-    1, 1,
-  };
-
-  ScaleType tex_scale_type_ = SCALE_TYPE_SCALE_FIT;
   float mvp_matrix_[16];
+  ScaleType tex_scale_type_ = SCALE_TYPE_SCALE_FIT;
   PixelFormat tex_format_ = PIXEL_FORMAT_YUYV;
+
+  GLuint input_texture_ = 0;
+  uint8_t* pixel_buffer_ = nullptr;
+  volatile bool is_pixel_updated = false;
   int tex_width_ = 0;
   int tex_height_ = 0;
-  bool tex_size_changed_ = false;
+  volatile bool is_tex_size_changed_ = false;
 
   int output_width_ = 0;
   int output_height_ = 0;
+  volatile bool is_output_size_changed_ = false;
 
   EglCore   *cur_eglcore_ = nullptr;
   EGLSurface cur_background_surface_ = 0;
   EGLSurface cur_window_surface_ = 0;
   Window     cur_window_id_ = 0;
+  volatile bool is_window_id_changed_ = false;
+
+  pthread_t  render_thread;
+  volatile bool is_running_ = false;
 };
 
 #endif // GL_RENDERER_H

@@ -15,7 +15,6 @@ VideoWidget::VideoWidget(QWidget *parent) : QWidget{parent}
   setAttribute(Qt::WA_PaintOnScreen);
   setAttribute(Qt::WA_NoSystemBackground);
   mGLRenderer = new GLRenderer();
-  mGLRenderer->setup();
   timer = new QTimer(this);
   fps = 0;
   connect(timer, &QTimer::timeout, [=](){
@@ -24,16 +23,20 @@ VideoWidget::VideoWidget(QWidget *parent) : QWidget{parent}
   timer->start(33);
 
   winCapturer = new
-//   WindowCapturer();
+   WindowCapturer();
 //   ScreenCapturer();
-   CameraDevice();
-  capDevice = winCapturer; // new CompositeCapturer((ICaptureDevice*) winCapturer);
+//   CameraDevice();
+  capDevice = new CompositeCapturer((ICaptureDevice*) winCapturer);
   selectDevice();
+  mGLRenderer->start();
 }
 
 VideoWidget::~VideoWidget()
 {
-  if (mGLRenderer) delete mGLRenderer;
+  if (mGLRenderer) {
+    mGLRenderer->stop();
+    delete mGLRenderer;
+  }
   mGLRenderer = nullptr;
   delete timer;
   capDevice->stop_device();
@@ -41,7 +44,7 @@ VideoWidget::~VideoWidget()
   delete capDevice;
   capDevice = nullptr;
 
-//  delete winCapturer;
+  delete winCapturer;
   winCapturer = nullptr;
 }
 
@@ -57,7 +60,6 @@ void VideoWidget::selectDevice()
   texWidth = info.width_;
   texHeight = info.height_;
   curFormat = info.format_;
-  isSizeChanged = true;
   capDevice->start_device();
   mGLRenderer->set_texture_format(curFormat);
 
@@ -139,7 +141,7 @@ void VideoWidget::_doRender()
     texHeight = capDevice->get_cur_device().height_;
     mGLRenderer->upload_texture(&pixels, 1, texWidth, texHeight);
   }
-  mGLRenderer->draw();
+//  mGLRenderer->draw();
 
   calcFPS();
   paintFPS();
@@ -155,7 +157,7 @@ void VideoWidget::_init()
   // this widget:
   auto nativeWindowHandler = winId();
 
-  mGLRenderer->setup();
+//  mGLRenderer->setup();
   mGLRenderer->bind_window(nativeWindowHandler);
 
   mIsInited = true;
