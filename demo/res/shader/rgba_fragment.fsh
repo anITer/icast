@@ -1,8 +1,4 @@
-#ifdef GL_ES
-// Set default precision to medium
-precision highp int;
-precision highp float;
-#endif
+precision mediump float;
 uniform sampler2D color_map;
 uniform float tex_width;
 varying highp vec4 v_tex_coords;

@@ -31,8 +31,6 @@ class ScreenCapturer : public WindowCapturer
 public:
   virtual const std::vector<DeviceInfo> enum_devices() override;
   int bind_device(DeviceInfo dev) override;
-
-private:
 };
 
 #endif // SCREEN_CAPTURER_H

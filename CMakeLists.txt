@@ -9,9 +9,14 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(X11 REQUIRED)
+find_package(OpenGL REQUIRED)
+
+INCLUDE_DIRECTORIES()
+LINK_DIRECTORIES()
 include_directories(
         include
         ${X11_INCLUDE_DIR}
+        ${OPENGL_INCLUDE_DIRS}
 )
 add_library(icast SHARED
   include/v4l2.h
@@ -21,18 +26,26 @@ add_library(icast SHARED
   include/window_capturer.h
   include/cursor_capturer.h
   include/composite_capturer.h
+  include/gl_renderer.h
+  include/egl_core.h
+  include/program.h
   src/v4l2.cc
   src/camera_device.cc
   src/screen_capturer.cc
   src/window_capturer.cc
   src/cursor_capturer.cc
   src/composite_capturer.cc
+  src/gl_renderer.cc
+  src/egl_core.cc
+  src/program.cc
 )
 target_link_libraries(icast ${X11_LIBRARIES}       # libx11-dev
                             ${X11_Xfixes_LIB}      # libxfixes-dev
                             ${X11_Xdamage_LIB}     # libxdamage-dev
                             ${X11_Xinerama_LIB}    # libxinerama-dev
                             ${X11_Xcomposite_LIB}  # libxcomposite-dev
+                            ${OPENGL_LIBRARY_DIRS} # libgles2-mesa-dev
+                            EGL                    # libegl1-mesa-dev
                         )
 
 # Next lines needed for building all Qt projects
@@ -40,11 +53,11 @@ find_package(Qt5 COMPONENTS Widgets REQUIRED)
 
 # using Qt meta-system (precompiler)
 QT5_ADD_RESOURCES( RES_SOURCES demo/res/shader.qrc )
-#QT5_WRAP_UI( UI_HEADERS demo/widget.ui )
+QT5_WRAP_UI( UI_HEADERS demo/widget.ui )
 
 add_executable(sample
-        demo/glwidget.h
-        demo/glwidget.cpp
+        demo/video_widget.h
+        demo/video_widget.cpp
         demo/main.cpp
         ${RES_SOURCES}
         ${UI_HEADERS}

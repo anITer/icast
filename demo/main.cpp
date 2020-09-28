@@ -21,13 +21,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#include "glwidget.h"
+#include "video_widget.h"
+#include "ui_widget.h"
 #include <QApplication>
+#include <QPushButton>
 
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
-    GLWidget window;
+    QWidget window;
+    Ui::Widget ui;
+    ui.setupUi(&window);
+
+    VideoWidget gl_widget;
+    QVBoxLayout layout_video;
+    layout_video.addWidget(&gl_widget);
+    layout_video.setMargin(0);
+    ui.frame_video->setLayout(&layout_video);
+
+    QHBoxLayout layout_control;
+    QPushButton button_start;
+    button_start.setText("S");
+    QPushButton button_join;
+    button_start.setText("J");
+    QPushButton button_setting;
+    button_start.setText("C");
+    layout_control.addWidget(&button_setting);
+    layout_control.addWidget(&button_join);
+    layout_control.addWidget(&button_start);
+    ui.columnView_control->setLayout(&layout_control);
+
     window.show();
 
     return app.exec();

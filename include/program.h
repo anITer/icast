@@ -21,36 +21,35 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#ifndef WINDOW_CAPTURER_H
-#define WINDOW_CAPTURER_H
+#ifndef IMAGE_PROC_PROGRAM_H
+#define IMAGE_PROC_PROGRAM_H
 
-#include "capture_interface.h"
-#include <X11/Xlib.h>
-#include <X11/extensions/XShm.h>
-#include <X11/extensions/Xdamage.h>
+#include <GLES2/gl2.h>
+#include <string>
 
-class WindowCapturer : public ICaptureDevice
-{
+class GLProgram {
 public:
-  WindowCapturer();
-  ~WindowCapturer() override;
+  GLProgram();
+  ~GLProgram();
 
-  const std::vector<DeviceInfo> enum_devices() override;
-  int bind_device(DeviceInfo dev) override;
-  int unbind_device() override;
-  int grab_frame(unsigned char* &buffer) override;
+  static GLProgram* create_by_shader_string(const std::string& vertex_shader_source,
+                                            const std::string& fragment_shader_source);
+
+  void use();
+  static void check_fb_fetch();
+  static const std::string& get_fb_fetch_header();
+  static const std::string& get_fb_fetch_color();
+
+  GLuint get_id() const { return program_; }
+
+  GLuint get_attrib_location(const std::string& attribute_name);
+  GLuint get_uniform_location(const std::string& uniform_name);
 
 private:
-  bool is_window_redrawed();
-  int resize_window_internal(int x, int y, int width, int height);
-  Display* cur_display_ = nullptr;
-  XImage* cur_image_ = nullptr;
-  XShmSegmentInfo* shm_info_ = nullptr;
+  GLuint program_ = -1;
 
-  // adaptive fps related
-  Damage damage_handle_ = 0;
-  int damage_event_base_ = 0;
-  int damage_error_base_ = 0;
+  bool init_with_shader_string(const std::string& vertex_shader_source,
+                               const std::string& fragment_shader_source);
 };
 
-#endif // WINDOW_CAPTURER_H
+#endif /* IMAGE_PROC_PROGRAM_H */

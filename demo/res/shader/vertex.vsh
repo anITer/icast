@@ -1,8 +1,4 @@
-#ifdef GL_ES
-// Set default precision to medium
-precision highp int;
-precision highp float;
-#endif
+precision mediump float;
 attribute highp vec4 model_coords;
 attribute highp vec4 tex_coords;
 uniform highp mat4 mvp_matrix;
