@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <algorithm>
+#include <mutex>
 
 static const int DEFAULT_FRAME_TIME_US = 1000000 / 30;
 static const int GL_WIDTH_ALIGN_SIZE = 2;
@@ -91,10 +92,10 @@ void* GLRenderer::render_loop(void* data)
     gettimeofday(&tmp_time, nullptr);
     start = tmp_time.tv_sec * 1000000 + tmp_time.tv_usec;
     if (renderer->upload_texture_internal()
-     || renderer->is_output_size_changed_) {
+     || renderer->is_force_refresh_) {
       renderer->bind_window_internal();
       renderer->draw();
-      renderer->is_output_size_changed_ = false;
+      renderer->is_force_refresh_ = false;
     }
     gettimeofday(&tmp_time, nullptr);
     end = tmp_time.tv_sec * 1000000 + tmp_time.tv_usec;
@@ -106,12 +107,14 @@ void* GLRenderer::render_loop(void* data)
 
 GLRenderer::GLRenderer()
 {
+  pthread_mutex_init(&pixel_mutex_, nullptr);
   memcpy(mvp_matrix_, IDENTITY_MATRIX, 16 * sizeof(float));
 }
 
 GLRenderer::~GLRenderer()
 {
   stop();
+  pthread_mutex_destroy(&pixel_mutex_);
 }
 
 void GLRenderer::start()
@@ -162,8 +165,11 @@ int GLRenderer::destroy()
 int GLRenderer::upload_texture(uint8_t **data, int num_channel, int width, int height)
 {
   if (!data || !*data) return -1;
-  pixel_buffer_ = (uint8_t *)*data;
+
+  pthread_mutex_lock(&pixel_mutex_);
   check_texture_size(width, height);
+  pixel_buffer_ = *data;
+  pthread_mutex_unlock(&pixel_mutex_);
   is_pixel_updated = true;
   return 0;
 }
@@ -171,6 +177,7 @@ int GLRenderer::upload_texture(uint8_t **data, int num_channel, int width, int h
 int GLRenderer::upload_texture_internal()
 {
   if (is_pixel_updated) {
+    pthread_mutex_lock(&pixel_mutex_);
     setup_texture();
     glBindTexture(GL_TEXTURE_2D, input_texture_);
     if (tex_format_ == PIXEL_FORMAT_RGBA) {
@@ -178,6 +185,7 @@ int GLRenderer::upload_texture_internal()
     } else { // YUYV for camera
       glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tex_width_ >> 1, tex_height_, GL_RGBA, GL_UNSIGNED_BYTE, pixel_buffer_);
     } // support other formats
+    pthread_mutex_unlock(&pixel_mutex_);
     glBindTexture(GL_TEXTURE_2D, 0);
     is_pixel_updated = false;
     return 1;
@@ -232,7 +240,6 @@ int GLRenderer::draw()
 
   post_draw();
   int error = glGetError();
-//  fprintf(stderr, "GLError after draw 0x%x\n", error);
   return -error;
 }
 
@@ -263,6 +270,7 @@ int GLRenderer::bind_window_internal()
   } else {
     cur_eglcore_->make_current(cur_background_surface_);
   }
+  is_window_id_changed_ = false;
   return 1;
 }
 
@@ -271,13 +279,17 @@ void GLRenderer::set_output_size(int width, int height)
   if (width == output_width_ && height == output_height_) {
     return;
   }
-  is_output_size_changed_ = true;
+  is_force_refresh_ = true;
   output_width_ = width;
   output_height_ = height;
+  reset_mvp_matrix();
+}
 
+void GLRenderer::reset_mvp_matrix()
+{
   mvp_matrix_[5] = -1.0; // flip virtically
   mvp_matrix_[0] = 1.0; // flip horizontally
-  if (tex_scale_type_ == SCALE_TYPE_STRETCH) return;
+  if (tex_scale_type_ == SCALE_TYPE_STRETCH || output_height_ * tex_height_ == 0) return;
 
   float scale = (float) output_width_ / output_height_ / ((float) tex_width_ / tex_height_);
 
@@ -318,6 +330,7 @@ int GLRenderer::check_texture_size(int width, int height)
   }
   tex_width_ = width;
   tex_height_ = height;
+  reset_mvp_matrix();
   return is_tex_size_changed_;
 }
 
@@ -343,26 +356,23 @@ int GLRenderer::setup_texture()
   }
   is_tex_size_changed_ = false;
   int error = glGetError();
-//  fprintf(stderr, "GLError after setup_texture 0x%x\n", error);
   return -error;
 }
 
 int GLRenderer::setup_program()
 {
-  char* vert_str = read_string("/home/adams/Documents/workspace/capture_io_linux/icast/demo/res/shader/vertex.vsh");
+  char* vert_str = read_string("../icast/demo/res/shader/vertex.vsh");
   char* frag_str = tex_format_ == PIXEL_FORMAT_RGBA
-        ? read_string("/home/adams/Documents/workspace/capture_io_linux/icast/demo/res/shader/rgba_fragment.fsh")
-        : read_string("/home/adams/Documents/workspace/capture_io_linux/icast/demo/res/shader/yuyv_fragment.fsh");
+        ? read_string("../icast/demo/res/shader/rgba_fragment.fsh")
+        : read_string("../icast/demo/res/shader/yuyv_fragment.fsh");
   program_ = GLProgram::create_by_shader_string(vert_str, frag_str);
   free(vert_str);
   free(frag_str);
   int error = glGetError();
-//  fprintf(stderr, "GLError after create shaders 0x%x\n", error);
   if (error != GL_NO_ERROR) return -error;
 
   program_->use();
   error = glGetError();
-//  fprintf(stderr, "GLError after use program 0x%x\n", error);
   if (error != GL_NO_ERROR) return -error;
 
   GLuint program_id = program_->get_id();
@@ -372,6 +382,5 @@ int GLRenderer::setup_program()
   vertices_handle_ = glGetAttribLocation(program_id, "model_coords");
   tex_coord_handle_ = glGetAttribLocation(program_id, "tex_coords");
   error = glGetError();
-//  fprintf(stderr, "GLError after setup_program 0x%x\n", error);
   return -error;
 }

@@ -64,6 +64,7 @@ protected:
   int setup_texture();
   int setup_program();
   static void* render_loop(void* data);
+  void reset_mvp_matrix();
 
   GLProgram *program_ = nullptr;
   int mvp_matrix_handle_ = -1;
@@ -77,6 +78,7 @@ protected:
   PixelFormat tex_format_ = PIXEL_FORMAT_YUYV;
 
   GLuint input_texture_ = 0;
+  pthread_mutex_t pixel_mutex_;
   uint8_t* pixel_buffer_ = nullptr;
   volatile bool is_pixel_updated = false;
   int tex_width_ = 0;
@@ -85,7 +87,7 @@ protected:
 
   int output_width_ = 0;
   int output_height_ = 0;
-  volatile bool is_output_size_changed_ = false;
+  volatile bool is_force_refresh_ = false;
 
   EglCore   *cur_eglcore_ = nullptr;
   EGLSurface cur_background_surface_ = 0;
