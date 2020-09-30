@@ -56,8 +56,8 @@ const std::vector<DeviceInfo> CameraDevice::enum_devices()
     dev.format_ = get_pixel_format(tmp_cam->format_);
     dev.pos_x_ = 0;
     dev.pos_y_ = 0;
-    dev.width_ = (int) tmp_cam->format_.width_[0];
-    dev.height_ = (int) tmp_cam->format_.height_[0];
+    dev.width_ = (int) tmp_cam->format_.width_;
+    dev.height_ = (int) tmp_cam->format_.height_;
     dev.name_ = tmp_name;
     dev.dev_id_ = i;
     dev.ext_data_ = (unsigned char *)tmp_cam;
@@ -73,11 +73,14 @@ int CameraDevice::bind_device(DeviceInfo dev)
   unbind_device();
 
   v4l2_cam_ = v4l2_create_device(dev.name_.c_str());
-  v4l2_get_format(v4l2_cam_, &v4l2_cam_->format_);
-  _width = dev.width_;
-  _height = dev.height_;
   cur_dev_ = dev;
   return 0;
+}
+
+void CameraDevice::set_preview_size(int width, int height)
+{
+  cur_dev_.width_ = width;
+  cur_dev_.height_ = height;
 }
 
 int CameraDevice::unbind_device()
@@ -92,9 +95,15 @@ int CameraDevice::unbind_device()
 int CameraDevice::start_device()
 {
   if (!v4l2_cam_) return -1;
+  v4l2_cam_->format_.width_ = cur_dev_.width_;
+  v4l2_cam_->format_.height_ = cur_dev_.height_;
+  fprintf(stderr, "try to set resolution: [%dx%d]\n", cur_dev_.width_, cur_dev_.height_);
   if (v4l2_open_device(v4l2_cam_) != V4L2_STATUS_OK) {
     return -1;
   }
+  cur_dev_.width_ = v4l2_cam_->format_.width_;
+  cur_dev_.height_ = v4l2_cam_->format_.height_;
+  fprintf(stderr, "set resolution: [%dx%d]\n", cur_dev_.width_, cur_dev_.height_);
   if (v4l2_start_capture(v4l2_cam_) != V4L2_STATUS_OK) {
     v4l2_close_device(v4l2_cam_);
     return -1;
@@ -128,17 +137,7 @@ int CameraDevice::grab_frame(unsigned char *&buffer)
     return -1;
   }
   buffer = v4l2_cam_->data_;
-  return _width * _height * 2;
-}
-
-int CameraDevice::set_fps(int fps)
-{
-  struct v4l2_streamparm param;
-  param.type = V4L2_BUF_TYPE_META_CAPTURE;
-  param.parm.capture.capturemode |= V4L2_CAP_TIMEPERFRAME;
-  param.parm.capture.timeperframe.numerator = 1;
-  param.parm.capture.timeperframe.denominator = fps;
-  return v4l2_set_param(v4l2_cam_, &param);
+  return cur_dev_.width_ * cur_dev_.height_ * 2;
 }
 
 PixelFormat CameraDevice::get_pixel_format(v4l2_format_t& format)

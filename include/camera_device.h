@@ -40,13 +40,15 @@ public:
   int start_device() override;
   int stop_device() override;
   int grab_frame(unsigned char* &buffer) override;
-  int set_fps(int fps);
+  /**
+   * @brief set_preview_size, must be called before start_device
+   * @param width
+   * @param height
+   */
+  void set_preview_size(int width, int height);
 
 private:
   PixelFormat get_pixel_format(v4l2_format_t& format);
-
-  int _width = 0;
-  int _height = 0;
   v4l2_device_t* v4l2_cam_ = nullptr;
 };
 

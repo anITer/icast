@@ -25,6 +25,8 @@
 #define V4L2_H
 
 #include <stdlib.h>
+#include <bits/types/struct_timespec.h>
+#include <bits/types/struct_timeval.h>
 #include <linux/videodev2.h>
 
 #ifdef __cplusplus
@@ -37,18 +39,17 @@ extern "C"{
 typedef struct v4l2_buffer_s {
   void *start_;
   size_t length_;
-  v4l2_memory type_ = V4L2_MEMORY_MMAP;
 } v4l2_buffer_t;
 
 typedef struct v4l2_format_s {
-  unsigned int width_[32];
-  unsigned int height_[32];
+  unsigned int width_;
+  unsigned int height_;
   unsigned int pixel_format_;
-  unsigned int reslution_num_;
 } v4l2_format_t;
 
 typedef struct v4l2_device_s {
   char name_[32];
+  char description_[32];
   int fd_;
   unsigned int num_buffers_;
   v4l2_buffer_t* buffers_;
@@ -62,18 +63,13 @@ void v4l2_destroy_device(v4l2_device_t *device);
 int v4l2_open_device(v4l2_device_t *device);
 int v4l2_close_device(v4l2_device_t *device);
 
-size_t v4l2_get_buffer_size(v4l2_device_t* device);
-
-int v4l2_set_format(v4l2_device_t* device, v4l2_format_t* format, int res_index);
+int v4l2_set_format(v4l2_device_t* device, v4l2_format_t* format);
 int v4l2_get_format(v4l2_device_t* device, v4l2_format_t* format);
-int v4l2_enum_format(v4l2_device_t* device, v4l2_format_t* format);
-int v4l2_set_param(v4l2_device_t* device, v4l2_streamparm* param);
 
 int v4l2_start_capture(v4l2_device_t *device);
 int v4l2_stop_capture(v4l2_device_t *device);
 
 int v4l2_grab_frame(v4l2_device_t *device);
-
 void v4l2_copy_frame(v4l2_device_t *device, unsigned char* dest);
 
 #ifdef __cplusplus
