@@ -24,7 +24,7 @@
 #ifndef IMAGE_PROC_PROGRAM_H
 #define IMAGE_PROC_PROGRAM_H
 
-#include <GLES2/gl2.h>
+#include <GLES3/gl3.h>
 #include <string>
 
 class GLProgram {

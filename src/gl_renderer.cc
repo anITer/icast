@@ -30,7 +30,6 @@
 #include <mutex>
 
 static const int DEFAULT_FRAME_TIME_US = 1000000 / 30;
-static const int GL_WIDTH_ALIGN_SIZE = 2;
 static const float IDENTITY_MATRIX[16] = {
           1.0, 0.0, 0.0, 0.0,
           0.0, 1.0, 0.0, 0.0,
@@ -71,10 +70,6 @@ static char* read_string(const char* path)
   fclose(fp);
 
   return res;
-}
-
-static int get_gl_width(int width) {
-  return (width + GL_WIDTH_ALIGN_SIZE - 1) / GL_WIDTH_ALIGN_SIZE * GL_WIDTH_ALIGN_SIZE;
 }
 
 void* GLRenderer::render_loop(void* data)
@@ -144,8 +139,16 @@ int GLRenderer::setup()
 int GLRenderer::destroy()
 {
   if (input_texture_) {
-    glDeleteTextures(1, &input_texture_);
-    input_texture_ = 0;
+    delete input_texture_;
+    input_texture_ = nullptr;
+  }
+  if (input_texture_uv_) {
+    delete input_texture_uv_;
+    input_texture_uv_ = nullptr;
+  }
+  if (pixel_buffer_object_) {
+    glDeleteBuffers(1, &pixel_buffer_object_);
+    pixel_buffer_object_ = 0;
   }
   if (program_) {
     delete program_;
@@ -169,8 +172,11 @@ int GLRenderer::upload_texture(uint8_t **data, int num_channel, int width, int h
   pthread_mutex_lock(&pixel_mutex_);
   check_texture_size(width, height);
   pixel_buffer_ = *data;
-  pthread_mutex_unlock(&pixel_mutex_);
   is_pixel_updated = true;
+//  if (input_texture_) input_texture_->upload_pixels(pixel_buffer_);
+//  if (input_texture_uv_) input_texture_uv_->upload_pixels(pixel_buffer_);
+//  is_pixel_updated = true;
+  pthread_mutex_unlock(&pixel_mutex_);
   return 0;
 }
 
@@ -178,16 +184,19 @@ int GLRenderer::upload_texture_internal()
 {
   if (is_pixel_updated) {
     pthread_mutex_lock(&pixel_mutex_);
-    setup_texture();
-    glBindTexture(GL_TEXTURE_2D, input_texture_);
+    setup_pixel_buffer();
+    glBindBuffer(GL_ARRAY_BUFFER, pixel_buffer_object_);
     if (tex_format_ == PIXEL_FORMAT_RGBA) {
-      glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tex_width_, tex_height_, GL_RGBA, GL_UNSIGNED_BYTE, pixel_buffer_);
-    } else { // YUYV for camera
-      glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tex_width_ >> 1, tex_height_, GL_RGBA, GL_UNSIGNED_BYTE, pixel_buffer_);
-    } // support other formats
-    pthread_mutex_unlock(&pixel_mutex_);
-    glBindTexture(GL_TEXTURE_2D, 0);
+      glBufferSubData(GL_ARRAY_BUFFER, 0, tex_width_ * tex_height_ * 4, pixel_buffer_);
+    } else {
+      glBufferSubData(GL_ARRAY_BUFFER, 0, tex_width_ * tex_height_ * 2, pixel_buffer_);
+    }
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
     is_pixel_updated = false;
+    pthread_mutex_unlock(&pixel_mutex_);
+
+    if (input_texture_) input_texture_->upload_pixel_from_pbo(pixel_buffer_object_);
+    if (input_texture_uv_) input_texture_uv_->upload_pixel_from_pbo(pixel_buffer_object_);
     return 1;
   }
   return 0;
@@ -224,11 +233,12 @@ int GLRenderer::draw()
 
   //纹理
   glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, input_texture_);
+  glBindTexture(GL_TEXTURE_2D, input_texture_->get_texture());
   glUniform1i(color_map_handle_, 0);
-
-  if (tex_width_handle_ >= 0) {
-    glUniform1f(tex_width_handle_, (float) (1.0 / output_width_));
+  if (tex_format_ == PIXEL_FORMAT_YUYV && input_texture_uv_) {
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, input_texture_uv_->get_texture());
+    glUniform1i(uv_color_map_handle_, 1);
   }
 
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -325,36 +335,33 @@ void GLRenderer::set_scale_type(ScaleType type)
 
 int GLRenderer::check_texture_size(int width, int height)
 {
-  if (width != tex_width_ || height != tex_height_) {
-    is_tex_size_changed_ = true;
+  if (width == tex_width_ && height == tex_height_) {
+    return 0;
   }
+  need_reset_pbo_ = true;
   tex_width_ = width;
   tex_height_ = height;
+  if (input_texture_) input_texture_->set_size(width, height);
+  if (input_texture_uv_) input_texture_uv_->set_size(width >> 1, height);
   reset_mvp_matrix();
-  return is_tex_size_changed_;
+  return 1;
 }
 
-int GLRenderer::setup_texture()
+int GLRenderer::setup_pixel_buffer()
 {
-  if (input_texture_) {
-    if (is_tex_size_changed_) {
-      glDeleteTextures(1, &input_texture_);
-    } else {
-      return 0;
-    }
-  }
-  glGenTextures(1, &input_texture_);
-  glBindTexture(GL_TEXTURE_2D, input_texture_);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  if (!need_reset_pbo_ && pixel_buffer_object_) return 0;
+  if (pixel_buffer_object_) glDeleteBuffers(1, &pixel_buffer_object_);
+
+  glGenBuffers(1, &pixel_buffer_object_);
+  glBindBuffer(GL_ARRAY_BUFFER, pixel_buffer_object_);
   if (tex_format_ == PIXEL_FORMAT_RGBA) {
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, get_gl_width(tex_width_), tex_height_, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-  } else { // YUYV for camera
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, get_gl_width(tex_width_) >> 1, tex_height_, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+    glBufferData(GL_ARRAY_BUFFER, tex_width_ * tex_height_ * 4, nullptr, GL_DYNAMIC_DRAW);
+  } else {
+    glBufferData(GL_ARRAY_BUFFER, tex_width_ * tex_height_ * 2, nullptr, GL_DYNAMIC_DRAW);
   }
-  is_tex_size_changed_ = false;
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  need_reset_pbo_ = false;
+
   int error = glGetError();
   return -error;
 }
@@ -377,10 +384,19 @@ int GLRenderer::setup_program()
 
   GLuint program_id = program_->get_id();
   mvp_matrix_handle_ = glGetUniformLocation(program_id, "mvp_matrix");
-  tex_width_handle_ = glGetUniformLocation(program_id, "tex_width");
   color_map_handle_ = glGetUniformLocation(program_id, "color_map");
+  uv_color_map_handle_ = glGetUniformLocation(program_id, "uv_color_map");
   vertices_handle_ = glGetAttribLocation(program_id, "model_coords");
   tex_coord_handle_ = glGetAttribLocation(program_id, "tex_coords");
+  error = glGetError();
+  if (error != GL_NO_ERROR) return -error;
+
+  if (tex_format_ == PIXEL_FORMAT_RGBA) {
+    input_texture_ = new Texture(tex_width_, tex_height_, GL_RGBA);
+  } else { // YUYV
+    input_texture_ = new Texture(tex_width_, tex_height_, GL_LUMINANCE_ALPHA);
+    input_texture_uv_ = new Texture(tex_width_ >> 1, tex_height_, GL_RGBA);
+  }
   error = glGetError();
   return -error;
 }

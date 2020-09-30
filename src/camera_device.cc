@@ -97,13 +97,11 @@ int CameraDevice::start_device()
   if (!v4l2_cam_) return -1;
   v4l2_cam_->format_.width_ = cur_dev_.width_;
   v4l2_cam_->format_.height_ = cur_dev_.height_;
-  fprintf(stderr, "try to set resolution: [%dx%d]\n", cur_dev_.width_, cur_dev_.height_);
   if (v4l2_open_device(v4l2_cam_) != V4L2_STATUS_OK) {
     return -1;
   }
   cur_dev_.width_ = v4l2_cam_->format_.width_;
   cur_dev_.height_ = v4l2_cam_->format_.height_;
-  fprintf(stderr, "set resolution: [%dx%d]\n", cur_dev_.width_, cur_dev_.height_);
   if (v4l2_start_capture(v4l2_cam_) != V4L2_STATUS_OK) {
     v4l2_close_device(v4l2_cam_);
     return -1;

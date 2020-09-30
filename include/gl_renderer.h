@@ -26,6 +26,7 @@
 
 #include "program.h"
 #include "egl_core.h"
+#include "texture.h"
 #include "capture_interface.h"
 #include <pthread.h>
 
@@ -61,7 +62,7 @@ protected:
   int upload_texture_internal();
   int bind_window_internal();
   int check_texture_size(int width, int height);
-  int setup_texture();
+  int setup_pixel_buffer();
   int setup_program();
   static void* render_loop(void* data);
   void reset_mvp_matrix();
@@ -70,20 +71,23 @@ protected:
   int mvp_matrix_handle_ = -1;
   int vertices_handle_ = -1;
   int tex_coord_handle_ = -1;
-  int tex_width_handle_ = -1;
   int color_map_handle_ = -1;
+  int uv_color_map_handle_ = -1;
 
   float mvp_matrix_[16];
   ScaleType tex_scale_type_ = SCALE_TYPE_SCALE_FIT;
   PixelFormat tex_format_ = PIXEL_FORMAT_YUYV;
 
-  GLuint input_texture_ = 0;
+  Texture *input_texture_ = nullptr;
+  Texture *input_texture_uv_ = nullptr;
+  int tex_width_ = 0;
+  int tex_height_ = 0;
+
+  GLuint pixel_buffer_object_ = 0;
+  volatile bool need_reset_pbo_ = false;
   pthread_mutex_t pixel_mutex_;
   uint8_t* pixel_buffer_ = nullptr;
   volatile bool is_pixel_updated = false;
-  int tex_width_ = 0;
-  int tex_height_ = 0;
-  volatile bool is_tex_size_changed_ = false;
 
   int output_width_ = 0;
   int output_height_ = 0;
