@@ -32,8 +32,6 @@ private:
   GLRenderer* mGLRenderer = nullptr;
   QTimer *timer = nullptr;
 
-  int texWidth = 0;
-  int texHeight = 0;
   ICaptureDevice* capDevice = nullptr;
   ICaptureDevice* winCapturer = nullptr;
 };

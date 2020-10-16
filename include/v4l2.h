@@ -25,8 +25,6 @@
 #define V4L2_H
 
 #include <stdlib.h>
-#include <bits/types/struct_timespec.h>
-#include <bits/types/struct_timeval.h>
 #include <linux/videodev2.h>
 
 #ifdef __cplusplus

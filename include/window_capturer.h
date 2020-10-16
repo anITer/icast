@@ -40,6 +40,9 @@ public:
   int unbind_device() override;
   int grab_frame(unsigned char* &buffer) override;
 
+protected:
+  bool is_window_fixed = false;
+
 private:
   bool is_window_redrawed();
   int resize_window_internal(int x, int y, int width, int height);

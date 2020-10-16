@@ -137,3 +137,10 @@ int CursorCapturer::grab_frame(unsigned char *&buffer)
   return (is_pos_changed || is_state_changed) ? pixel_size * sizeof(int) : 0;
 }
 
+int CursorCapturer::get_hot_spot(int &x, int &y)
+{
+  if (!cur_image_) return -1;
+  x = cur_image_->xhot;
+  y = cur_image_->yhot;
+  return 0;
+}

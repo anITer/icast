@@ -65,8 +65,8 @@ int ScreenCapturer::bind_device(DeviceInfo dev)
   Display* display = XOpenDisplay(NULL);
   if(!display) return -1;
 
-  int scr_id = dev.dev_id_ ? dev.dev_id_ : XDefaultScreen(display);
-  dev.dev_id_ = RootWindow(display, scr_id);
+  dev.dev_id_ = XDefaultRootWindow(display);
+  is_window_fixed = true;
   XCloseDisplay(display);
 
   return WindowCapturer::bind_device(dev);

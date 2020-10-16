@@ -53,7 +53,7 @@ public:
   void set_texture_format(PixelFormat format);
   void set_scale_type(ScaleType type = SCALE_TYPE_SCALE_FIT);
 
-protected:  
+protected:
   int setup();
   int destroy();
   int draw();

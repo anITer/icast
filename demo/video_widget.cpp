@@ -1,13 +1,10 @@
 #include "video_widget.h"
-#include <time.h>
-#include <QPainter>
-#include <QElapsedTimer>
 #include <QKeyEvent>
+#include "gl_renderer.h"
 #include "camera_device.h"
 #include "screen_capturer.h"
 #include "window_capturer.h"
 #include "composite_capturer.h"
-#include "gl_renderer.h"
 
 VideoWidget::VideoWidget(QWidget *parent) : QWidget{parent}
 {
@@ -55,12 +52,10 @@ VideoWidget::~VideoWidget()
 void VideoWidget::selectDevice()
 {
   const std::vector<DeviceInfo>& list = capDevice->enum_devices();
-  DeviceInfo dev = list[0];
+  DeviceInfo dev = list[1];
   capDevice->bind_device(dev);
   capDevice->start_device();
   DeviceInfo& info = capDevice->get_cur_device();
-  texWidth = info.width_;
-  texHeight = info.height_;
   mGLRenderer->set_texture_format(info.format_);
 }
 
@@ -92,8 +87,8 @@ void VideoWidget::_feedData()
 
   unsigned char* pixels = nullptr;
   if (capDevice->grab_frame(pixels) > 0) {
-    texWidth = capDevice->get_cur_device().width_;
-    texHeight = capDevice->get_cur_device().height_;
+    int texWidth = capDevice->get_cur_device().width_;
+    int texHeight = capDevice->get_cur_device().height_;
     mGLRenderer->upload_texture(&pixels, 1, texWidth, texHeight);
   }
 }

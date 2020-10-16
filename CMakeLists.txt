@@ -42,10 +42,10 @@ add_library(icast SHARED
   src/texture.cc
 )
 target_link_libraries(icast ${X11_LIBRARIES}       # libx11-dev
-                            ${X11_Xfixes_LIB}      # libxfixes-dev
-                            ${X11_Xdamage_LIB}     # libxdamage-dev
-                            ${X11_Xinerama_LIB}    # libxinerama-dev
-                            ${X11_Xcomposite_LIB}  # libxcomposite-dev
+                            Xfixes                 # libxfixes-dev
+                            Xdamage                # libxdamage-dev
+                            Xinerama               # libxinerama-dev
+                            Xcomposite             # libxcomposite-dev
                             ${OPENGL_LIBRARY_DIRS} # libgles2-mesa-dev
                             EGL                    # libegl1-mesa-dev
                         )

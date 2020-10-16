@@ -21,27 +21,41 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#ifndef CURSOR_UTIL_H
-#define CURSOR_UTIL_H
+#ifndef FILTER_TEXTURE_OBJECT_H
+#define FILTER_TEXTURE_OBJECT_H
 
-#include "capture_interface.h"
-#include <X11/X.h>
-#include <X11/extensions/Xfixes.h>
+#include <GLES3/gl3.h>
+#include <mutex>
+#include <vector>
 
-class CursorCapturer : public ICaptureDevice
-{
+class Texture {
 public:
-  CursorCapturer();
-  ~CursorCapturer();
-  const std::vector<DeviceInfo> enum_devices() override;
-  int bind_device(DeviceInfo dev) override;
-  int unbind_device() override;
-  int grab_frame(unsigned char* &buffer) override;
-  int get_hot_spot(int &x, int &y);
+    Texture(int width, int height, int format);
+    virtual ~Texture();
+
+    GLuint get_texture();
+
+    void upload_pixel_from_pbo(int pbo);
+    void upload_pixels(unsigned char* pixel_buffer);
+    // TODO:: using pbo
+    void download_pixels(unsigned char* &pixel_buffer) { }
+
+    void set_size(int width, int height);
+
 private:
-  XFixesCursorImage* cur_image_ = nullptr;
-  Display* cur_display_ = nullptr;
-  unsigned long last_cursor_state_ = 0;
+    bool has_gen_tex_ = false; // has generated texture or not
+    GLuint texture_;
+    unsigned char* pixel_buffer_ = nullptr;
+    std::mutex pixel_lock_;
+    bool need_reset_texture_ = false;
+    int pixel_format_;
+    int width_ = 0;
+    int height_ = 0;
+
+private:
+
+    void generate_texture();
+    void destroy_texture();
 };
 
-#endif // CURSOR_UTIL_H
+#endif /* FILTER_TEXTURE_OBJECT_H */

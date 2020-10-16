@@ -24,14 +24,11 @@
 #include "window_capturer.h"
 #include <assert.h>
 #include <string.h>
-#include <sys/time.h>
 #include <algorithm>
 #include <X11/Xutil.h>
 #include <sys/shm.h>
 #include <X11/extensions/Xinerama.h>
 #include <X11/extensions/Xcomposite.h>
-
-const std::string SCREEN_PREFIX = "Display_";
 
 static DeviceInfo create_device(Display* display, XID& window)
 {
@@ -106,13 +103,15 @@ int WindowCapturer::bind_device(DeviceInfo dev)
   cur_dev_ = dev;
   cur_dev_.format_ = PIXEL_FORMAT_RGBA;
 
-  Window tmp_wnd;
-  int x, y;
-  unsigned int width, height, border, depth = 0;
-  XGetGeometry(cur_display_, (Window)(cur_dev_.dev_id_),
-              &tmp_wnd, &x, &y, &width, &height, &border, &depth);
-  cur_dev_.width_ = width;
-  cur_dev_.height_ = height;
+  if (!is_window_fixed) {
+    Window tmp_wnd;
+    int x, y;
+    unsigned int width, height, border, depth = 0;
+    XGetGeometry(cur_display_, (Window)(cur_dev_.dev_id_),
+                &tmp_wnd, &x, &y, &width, &height, &border, &depth);
+    cur_dev_.width_ = width;
+    cur_dev_.height_ = height;
+  }
 
   int scr = XDefaultScreen(cur_display_);
   shm_info_ = new XShmSegmentInfo();
@@ -127,6 +126,7 @@ int WindowCapturer::bind_device(DeviceInfo dev)
   // force preserve an off-screen storage for window even if it's in the background
   XCompositeRedirectWindow(cur_display_, cur_dev_.dev_id_, CompositeRedirectAutomatic);
 
+  // register notify-receiver for content updating event(damage) of window
   if (!XDamageQueryExtension(cur_display_, &damage_event_base_, &damage_error_base_)) {
     damage_event_base_ = 0;
     return 0;
@@ -173,14 +173,10 @@ bool WindowCapturer::is_window_redrawed()
     XNextEvent(cur_display_, &e);
     if (e.type == damage_event_base_ + XDamageNotify) {
       if (((XDamageNotifyEvent *)&e)->damage == damage_handle_) {
-        struct timeval tp;
-        gettimeofday(&tp, NULL);
-//        fprintf(stderr, "[time:%lu] is_window_redrawed: true\n", tp.tv_sec * 1000 + tp.tv_usec / 1000);
         return true;
       }
     }
   }
-//  fprintf(stderr, "is_window_redrawed: false\n");
   return false;
 }
 
@@ -205,20 +201,28 @@ int WindowCapturer::grab_frame(unsigned char *&buffer)
 {
   if (!cur_display_) return 0;
   Window tmp_wnd;
-  int x, y, pos_x, pos_y = 0;
-  unsigned int width, height, border, depth = 0;
+  int x, y, pos_x, pos_y;
+  unsigned int width, height, border, depth;
   do {
-    if(XGetGeometry(cur_display_, (Window)(cur_dev_.dev_id_),
-                    &tmp_wnd, &x, &y, &width, &height, &border, &depth) == 0) {
-      return -1; // window might not be valid any more
-    }
-    XTranslateCoordinates(cur_display_, (Window)(cur_dev_.dev_id_),
-                        XDefaultRootWindow(cur_display_), x, y, &pos_x, &pos_y, &tmp_wnd);
-    // if window size changed, rebuild memory mapping staffs
-    resize_window_internal(pos_x, pos_y, width, height);
-    if(!XShmGetImage(cur_display_, (Window)(cur_dev_.dev_id_), cur_image_, 0, 0, AllPlanes)) {
-      // TODO:: log error fetch buffer failed
-      return -1;
+    if (!is_window_fixed) {
+      if(XGetGeometry(cur_display_, (Window)(cur_dev_.dev_id_),
+                      &tmp_wnd, &x, &y, &width, &height, &border, &depth) == 0) {
+        return -1; // window might not be valid any more
+      }
+      XTranslateCoordinates(cur_display_, (Window)(cur_dev_.dev_id_),
+                          XDefaultRootWindow(cur_display_), x, y, &pos_x, &pos_y, &tmp_wnd);
+      // if window size changed, rebuild memory mapping staffs
+      resize_window_internal(pos_x, pos_y, width, height);
+      if(!XShmGetImage(cur_display_, (Window)(cur_dev_.dev_id_), cur_image_, 0, 0, AllPlanes)) {
+        // TODO:: log error fetch buffer failed
+        return -1;
+      }
+    } else {
+      if(!XShmGetImage(cur_display_, (Window)(cur_dev_.dev_id_), cur_image_,
+                       cur_dev_.pos_x_, cur_dev_.pos_y_, AllPlanes)) {
+        // TODO:: log error fetch buffer failed
+        return -1;
+      }
     }
     break;
   } while (true);
