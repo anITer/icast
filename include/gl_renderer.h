@@ -25,10 +25,12 @@
 #define GL_RENDERER_H
 
 #include "program.h"
-#include "egl_core.h"
+#include "render_ctrl.h"
 #include "texture.h"
 #include "capture_interface.h"
 #include <pthread.h>
+
+class RenderCtrl;
 
 class GLRenderer
 {
@@ -41,30 +43,27 @@ enum ScaleType
 };
 
 public:
-  GLRenderer();
+  GLRenderer(RenderCtrl* render_ctrl);
   virtual ~GLRenderer();
 
-  void start();
-  void stop();
+  void bind_window_for_source(XID& win_id, std::string& src_id);
 
   int upload_texture(uint8_t** data, int num_channel, int width, int height);
-  int bind_window(XID win_id);
   void set_output_size(int width, int height);
   void set_texture_format(PixelFormat format);
   void set_scale_type(ScaleType type = SCALE_TYPE_SCALE_FIT);
 
 protected:
   int setup();
-  int destroy();
+  int release();
   int draw();
+
   virtual int pre_draw();
   virtual int post_draw();
   int upload_texture_internal();
-  int bind_window_internal();
   int check_texture_size(int width, int height);
   int setup_pixel_buffer();
   int setup_program();
-  static void* render_loop(void* data);
   void reset_mvp_matrix();
 
   GLProgram *program_ = nullptr;
@@ -93,14 +92,13 @@ protected:
   int output_height_ = 0;
   volatile bool is_force_refresh_ = false;
 
-  EglCore   *cur_eglcore_ = nullptr;
-  EGLSurface cur_background_surface_ = 0;
+  RenderCtrl* render_ctrl_ = nullptr;
   EGLSurface cur_window_surface_ = 0;
   Window     cur_window_id_ = 0;
-  volatile bool is_window_id_changed_ = false;
+  volatile bool is_window_changed = false;
 
-  pthread_t  render_thread;
-  volatile bool is_running_ = false;
+  std::string source_id_ = "";
+  friend RenderCtrl;
 };
 
 #endif // GL_RENDERER_H

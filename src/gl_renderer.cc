@@ -24,12 +24,9 @@
 #include "gl_renderer.h"
 #include <cstring>
 #include <cstdlib>
-#include <unistd.h>
-#include <sys/time.h>
 #include <algorithm>
 #include <mutex>
 
-static const int DEFAULT_FRAME_TIME_US = 1000000 / 30;
 static const float IDENTITY_MATRIX[16] = {
           1.0, 0.0, 0.0, 0.0,
           0.0, 1.0, 0.0, 0.0,
@@ -72,71 +69,31 @@ static char* read_string(const char* path)
   return res;
 }
 
-void* GLRenderer::render_loop(void* data)
+GLRenderer::GLRenderer(RenderCtrl* render_ctrl)
 {
-  GLRenderer* renderer = (GLRenderer *)data;
-  renderer->setup();
-
-  long start = 0;
-  long end = DEFAULT_FRAME_TIME_US;
-  timeval tmp_time;
-  while (renderer->is_running_) {
-    usleep(std::max(0L, DEFAULT_FRAME_TIME_US - (end - start)));
-    if (!renderer->is_running_) break;
-
-    gettimeofday(&tmp_time, nullptr);
-    start = tmp_time.tv_sec * 1000000 + tmp_time.tv_usec;
-    if (renderer->upload_texture_internal()
-     || renderer->is_force_refresh_) {
-      renderer->bind_window_internal();
-      renderer->draw();
-      renderer->is_force_refresh_ = false;
-    }
-    gettimeofday(&tmp_time, nullptr);
-    end = tmp_time.tv_sec * 1000000 + tmp_time.tv_usec;
-  }
-
-  renderer->destroy();
-  return nullptr;
-}
-
-GLRenderer::GLRenderer()
-{
+  render_ctrl_ = render_ctrl;
   pthread_mutex_init(&pixel_mutex_, nullptr);
   memcpy(mvp_matrix_, IDENTITY_MATRIX, 16 * sizeof(float));
 }
 
 GLRenderer::~GLRenderer()
 {
-  stop();
   pthread_mutex_destroy(&pixel_mutex_);
 }
 
-void GLRenderer::start()
+void GLRenderer::bind_window_for_source(XID &win_id, std::string& src_id)
 {
-  if (is_running_) return;
-  is_running_ = true;
-  pthread_create(&render_thread, nullptr, render_loop, this);
-}
-
-void GLRenderer::stop()
-{
-  if (!is_running_) return;
-  is_running_ = false;
-  pthread_join(render_thread, nullptr);
+  source_id_ = src_id;
+  is_window_changed = win_id != cur_window_id_;
+  cur_window_id_ = win_id;
 }
 
 int GLRenderer::setup()
 {
-  if (cur_eglcore_) return 0;
-
-  cur_eglcore_ = new EglCore();
-  cur_background_surface_ = cur_eglcore_->create_offscreen_surface(1, 1);
-  cur_eglcore_->make_current(cur_background_surface_);
   return setup_program();
 }
 
-int GLRenderer::destroy()
+int GLRenderer::release()
 {
   if (input_texture_) {
     delete input_texture_;
@@ -154,14 +111,8 @@ int GLRenderer::destroy()
     delete program_;
     program_ = nullptr;
   }
-  if (cur_eglcore_) {
-    if (cur_background_surface_) cur_eglcore_->release_surface(cur_background_surface_);
-    cur_background_surface_ = 0;
-    if (cur_window_surface_) cur_eglcore_->release_surface(cur_window_surface_);
-    cur_window_surface_ = 0;
-    delete cur_eglcore_;
-  }
-  cur_eglcore_ = nullptr;
+  if (cur_window_surface_) render_ctrl_->release_surface(cur_window_surface_);
+  cur_window_surface_ = 0;
   return 0;
 }
 
@@ -204,13 +155,28 @@ int GLRenderer::upload_texture_internal()
 
 int GLRenderer::pre_draw()
 {
+  if (is_window_changed) {
+    if (cur_window_surface_) {
+      render_ctrl_->release_surface(cur_window_surface_);
+      cur_window_surface_ = EGL_NO_SURFACE;
+    }
+    if (cur_window_id_) {
+      cur_window_surface_ = render_ctrl_->create_surface(cur_window_id_);
+    }
+    is_window_changed = false;
+  }
+  render_ctrl_->make_current(cur_window_surface_);
   return 0;
 }
 
 int GLRenderer::draw()
 {
-  if (!cur_window_surface_) {
+  if (!cur_window_id_) {
     return 0;
+  }
+
+  if (!upload_texture_internal() && !is_force_refresh_) {
+      return 0;
   }
 
   pre_draw();
@@ -246,7 +212,7 @@ int GLRenderer::draw()
   glDisableVertexAttribArray(vertices_handle_);
   glDisableVertexAttribArray(tex_coord_handle_);
   glUseProgram(0);
-  cur_eglcore_->swap_buffers(cur_window_surface_);
+  render_ctrl_->swap_buffer(cur_window_surface_);
 
   post_draw();
   int error = glGetError();
@@ -256,32 +222,6 @@ int GLRenderer::draw()
 int GLRenderer::post_draw()
 {
   return 0;
-}
-
-int GLRenderer::bind_window(XID win_id)
-{
-  if (cur_window_id_ && cur_window_id_ == win_id) return 0;
-
-  cur_window_id_ = win_id;
-  is_window_id_changed_ = true;
-  return 0;
-}
-
-int GLRenderer::bind_window_internal()
-{
-  if (!is_window_id_changed_) return 0;
-  if (cur_window_surface_) {
-    cur_eglcore_->release_surface(cur_window_surface_);
-    cur_window_surface_ = 0;
-  }
-  if (cur_window_id_ ) {
-    cur_window_surface_ = cur_eglcore_->create_window_surface(cur_window_id_);
-    cur_eglcore_->make_current(cur_window_surface_);
-  } else {
-    cur_eglcore_->make_current(cur_background_surface_);
-  }
-  is_window_id_changed_ = false;
-  return 1;
 }
 
 void GLRenderer::set_output_size(int width, int height)

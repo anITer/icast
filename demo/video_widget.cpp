@@ -1,5 +1,6 @@
 #include "video_widget.h"
 #include <QKeyEvent>
+#include "render_ctrl.h"
 #include "gl_renderer.h"
 #include "camera_device.h"
 #include "screen_capturer.h"
@@ -12,8 +13,9 @@ VideoWidget::VideoWidget(QWidget *parent) : QWidget{parent}
   setAttribute(Qt::WA_PaintOnScreen);
   setAttribute(Qt::WA_NoSystemBackground);
 
-  mGLRenderer = new GLRenderer();
-  mGLRenderer->start();
+  mRenderCtrl = new RenderCtrl();
+  mGLRenderer = new GLRenderer(mRenderCtrl);
+  mRenderCtrl->start();
   timer = new QTimer(this);
   connect(timer, &QTimer::timeout, [=](){
     _feedData();
@@ -31,7 +33,12 @@ VideoWidget::VideoWidget(QWidget *parent) : QWidget{parent}
 VideoWidget::~VideoWidget()
 {
   if (mGLRenderer) {
-    mGLRenderer->stop();
+    mRenderCtrl->stop();
+    delete mGLRenderer;
+    mGLRenderer = nullptr;
+  }
+
+  if (mGLRenderer) {
     delete mGLRenderer;
     mGLRenderer = nullptr;
   }
@@ -52,7 +59,7 @@ VideoWidget::~VideoWidget()
 void VideoWidget::selectDevice()
 {
   const std::vector<DeviceInfo>& list = capDevice->enum_devices();
-  DeviceInfo dev = list[1];
+  DeviceInfo dev = list[2];
   capDevice->bind_device(dev);
   capDevice->start_device();
   DeviceInfo& info = capDevice->get_cur_device();
@@ -95,7 +102,9 @@ void VideoWidget::_feedData()
 
 void VideoWidget::_init()
 {
-  auto nativeWindowHandler = winId();
-  mGLRenderer->bind_window(nativeWindowHandler);
+  XID nativeWindowHandler = winId();
+  std::string source_id = "";
+  mRenderCtrl->add_renderer(mGLRenderer);
+  mGLRenderer->bind_window_for_source(nativeWindowHandler, source_id);
   mIsInited = true;
 }

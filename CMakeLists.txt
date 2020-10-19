@@ -27,6 +27,7 @@ add_library(icast SHARED
   include/cursor_capturer.h
   include/composite_capturer.h
   include/gl_renderer.h
+  include/render_ctrl.h
   include/egl_core.h
   include/program.h
   include/texture.h
@@ -37,6 +38,7 @@ add_library(icast SHARED
   src/cursor_capturer.cc
   src/composite_capturer.cc
   src/gl_renderer.cc
+  src/render_ctrl.cc
   src/egl_core.cc
   src/program.cc
   src/texture.cc

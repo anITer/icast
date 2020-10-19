@@ -8,6 +8,7 @@
 #include "capture_interface.h"
 
 class GLRenderer;
+class RenderCtrl;
 
 class VideoWidget : public QWidget
 {
@@ -29,6 +30,7 @@ private:
   void selectDevice(); // test function
   bool mIsInited = false;
 
+  RenderCtrl* mRenderCtrl = nullptr;
   GLRenderer* mGLRenderer = nullptr;
   QTimer *timer = nullptr;
 
