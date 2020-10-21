@@ -111,9 +111,15 @@ void RenderCtrl::make_current(EGLSurface &surface)
 void RenderCtrl::add_renderer(GLRenderer *renderer)
 {
   std::unique_lock<std::mutex> lock(render_mutex_);
-  if (renderer_list_.find(renderer) == renderer_list_.end()
-    || renderer_list_[renderer] == RENDERER_STATE_DEAD) {
+  if (renderer_list_.find(renderer) == renderer_list_.end()) {
     renderer_list_[renderer] = RENDERER_STATE_IDLE;
+    return;
+  }
+  int state = renderer_list_[renderer];
+  if (state == RENDERER_STATE_DEAD) {
+    renderer_list_[renderer] = RENDERER_STATE_IDLE;
+  } else if (state == RENDERER_STATE_RELEASE) {
+    renderer_list_[renderer] = RENDERER_STATE_READY;
   }
 }
 
@@ -121,19 +127,30 @@ void RenderCtrl::remove_renderer(GLRenderer *renderer)
 {
   std::unique_lock<std::mutex> lock(render_mutex_);
   if (renderer_list_.find(renderer) != renderer_list_.end()) {
+    int state = renderer_list_[renderer];
+    if (state == RENDERER_STATE_IDLE
+     || state == RENDERER_STATE_DEAD) {
+      renderer_list_[renderer] = RENDERER_STATE_DEAD;
+      return;
+    }
     renderer_list_[renderer] = RENDERER_STATE_RELEASE;
+    is_done_release_ = false;
   }
-  is_done_release_ = false;
   cv_.wait(lock, [&] { return is_done_release_; });
 }
 
 void RenderCtrl::clear_renderers()
 {
   std::unique_lock<std::mutex> lock(render_mutex_);
-  for (auto renderer : renderer_list_) {
-    renderer_list_[renderer.first] = RENDERER_STATE_RELEASE;
+  for (auto item : renderer_list_) {
+    if (item.second == RENDERER_STATE_IDLE
+     || item.second == RENDERER_STATE_DEAD) {
+      renderer_list_[item.first] = RENDERER_STATE_DEAD;
+      continue;
+    }
+    renderer_list_[item.first] = RENDERER_STATE_RELEASE;
+    is_done_release_ = false;
   }
-  is_done_release_ = false;
   cv_.wait(lock, [&] { return is_done_release_; });
 }
 
@@ -151,8 +168,8 @@ void RenderCtrl::setup_renderers()
 {
   std::unique_lock<std::mutex> lock(render_mutex_);
   for (auto renderer : renderer_list_) {
-    if (renderer.second == RENDERER_STATE_IDLE) {
-      renderer.first->setup();
+    if (renderer.second == RENDERER_STATE_IDLE
+     && renderer.first->setup() >= 0) {
       renderer_list_[renderer.first] = RENDERER_STATE_READY;
     }
   }
