@@ -70,7 +70,9 @@ const std::vector<DeviceInfo> WindowCapturer::enum_devices()
   Display* display = XOpenDisplay(NULL);
   if(!display) return dev_list;
   
-  Atom atom = XInternAtom(display, "_NET_CLIENT_LIST", true);
+  // _NET_CLIENT_LIST has oldest-to-newest initial mapping order
+  // _NET_CLIENT_LIST_STACKING has bottom-to-top stacking order
+  Atom atom = XInternAtom(display, "_NET_CLIENT_LIST_STACKING", true);
   Atom actual_type;
   int format;
   unsigned long num_items, bytes_after;
