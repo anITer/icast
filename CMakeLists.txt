@@ -31,6 +31,8 @@ add_library(icast SHARED
   include/egl_core.h
   include/program.h
   include/texture.h
+  include/cacheable.h
+  include/object_cacher.h
   src/v4l2.cc
   src/camera_device.cc
   src/screen_capturer.cc

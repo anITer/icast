@@ -176,7 +176,7 @@ int GLRenderer::draw()
   }
 
   if (!upload_texture_internal() && !is_force_refresh_) {
-      return 0;
+    return 0;
   }
 
   pre_draw();
@@ -281,8 +281,17 @@ int GLRenderer::check_texture_size(int width, int height)
   need_reset_pbo_ = true;
   tex_width_ = width;
   tex_height_ = height;
-  if (input_texture_) input_texture_->set_size(width, height);
-  if (input_texture_uv_) input_texture_uv_->set_size(width >> 1, height);
+  if (input_texture_) render_ctrl_->return_texture(input_texture_);
+  if (input_texture_uv_) render_ctrl_->return_texture(input_texture_uv_);
+  if (tex_format_ == PIXEL_FORMAT_RGBA) {
+    input_texture_ = render_ctrl_->fetch_texture(tex_width_, tex_height_);
+  } else { // YUYV
+    Texture::Attributes attr = *Texture::s_default_texture_attributes_;
+    attr.format_ = GL_LUMINANCE_ALPHA;
+    attr.internal_format_ = GL_LUMINANCE_ALPHA;
+    input_texture_ = render_ctrl_->fetch_texture(tex_width_, tex_height_, &attr);
+    input_texture_uv_ = render_ctrl_->fetch_texture(tex_width_ >> 1, tex_height_);
+  }
   reset_mvp_matrix();
   return 1;
 }
@@ -332,10 +341,13 @@ int GLRenderer::setup_program()
   if (error != GL_NO_ERROR) return -error;
 
   if (tex_format_ == PIXEL_FORMAT_RGBA) {
-    input_texture_ = new Texture(tex_width_, tex_height_, GL_RGBA);
+    input_texture_ = render_ctrl_->fetch_texture(tex_width_, tex_height_);
   } else { // YUYV
-    input_texture_ = new Texture(tex_width_, tex_height_, GL_LUMINANCE_ALPHA);
-    input_texture_uv_ = new Texture(tex_width_ >> 1, tex_height_, GL_RGBA);
+    Texture::Attributes attr = *Texture::s_default_texture_attributes_;
+    attr.format_ = GL_LUMINANCE_ALPHA;
+    attr.internal_format_ = GL_LUMINANCE_ALPHA;
+    input_texture_ = render_ctrl_->fetch_texture(tex_width_, tex_height_, &attr);
+    input_texture_uv_ = render_ctrl_->fetch_texture(tex_width_ >> 1, tex_height_);
   }
   error = glGetError();
   return -error;

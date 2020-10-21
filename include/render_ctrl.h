@@ -27,6 +27,8 @@
 #include <pthread.h>
 #include <map>
 #include "egl_core.h"
+#include "texture.h"
+#include "object_cacher.h"
 
 class GLRenderer;
 
@@ -50,6 +52,10 @@ public:
   void swap_buffer(EGLSurface& surface);
   void make_current(EGLSurface& surface);
 
+  Texture* fetch_texture(int width, int height,
+                         Cacheable::Attributes* attribute = Texture::s_default_texture_attributes_);
+  void return_texture(Texture* texture);
+
 private:
   void setup_egl();
   void release_egl();
@@ -65,6 +71,7 @@ private:
 
   EglCore   *egl_core_ = nullptr;
   EGLSurface cur_background_surface_ = 0;
+  ObjectCacher<Texture, Texture::Attributes> texture_cache_;
 
   pthread_mutex_t render_lock_;
   std::map<GLRenderer*, int> renderer_list_;

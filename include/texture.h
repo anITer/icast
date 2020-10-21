@@ -27,35 +27,59 @@
 #include <GLES3/gl3.h>
 #include <mutex>
 #include <vector>
+#include "cacheable.h"
 
-class Texture {
+class Texture : public Cacheable {
 public:
-    Texture(int width, int height, int format);
-    virtual ~Texture();
+  struct Attributes : Cacheable::Attributes {
+    GLenum min_filter_ = GL_LINEAR;
+    GLenum mag_filter_ = GL_LINEAR;
+    GLenum wrap_s_ = GL_CLAMP_TO_EDGE;
+    GLenum wrap_t_ = GL_CLAMP_TO_EDGE;
+    GLenum internal_format_ = GL_RGBA;
+    GLenum format_ = GL_RGBA;
+    GLenum type_ = GL_UNSIGNED_BYTE;
+    GLenum target_ = GL_TEXTURE_2D;
 
-    GLuint get_texture();
+    inline std::string get_hash() const override {
+      return str_format("%d:%d:%d:%d:%d:%d:%d:%d",
+                        min_filter_, mag_filter_, wrap_s_, wrap_t_,
+                        internal_format_, format_, type_, target_);
+    }
+  };
 
-    void upload_pixel_from_pbo(int pbo);
-    void upload_pixels(unsigned char* pixel_buffer);
-    // TODO:: using pbo
-    void download_pixels(unsigned char* &pixel_buffer) { }
+  static Texture* create(int width, int height,
+      Cacheable::Attributes* attribute = s_default_texture_attributes_);
 
-    void set_size(int width, int height);
+  Texture(int width, int height, Attributes* texture_attributes = s_default_texture_attributes_);
+  virtual ~Texture();
+
+  GLuint get_texture();
+
+  bool need_be_cached() override { return has_gen_tex_; }
+
+  void upload_pixel_from_pbo(int pbo);
+  void upload_pixel_from_buffer(unsigned char* pixel_buffer);
+
+  void download_pixels(unsigned char* &pixel_buffer) { /* TODO:: using pbo */ }
+
+  inline Cacheable::Attributes* get_attributes() const override { return (Cacheable::Attributes*) &attributes_; };
+  inline const Attributes& get_texture_attributes() const { return attributes_; };
+
+  static Attributes* s_default_texture_attributes_;
 
 private:
-    bool has_gen_tex_ = false; // has generated texture or not
-    GLuint texture_;
-    unsigned char* pixel_buffer_ = nullptr;
-    std::mutex pixel_lock_;
-    bool need_reset_texture_ = false;
-    int pixel_format_;
-    int width_ = 0;
-    int height_ = 0;
+  bool has_gen_tex_ = false;
+  Attributes attributes_;
+  GLuint texture_ = 0;
+  unsigned char* pixel_buffer_ = nullptr;
+  std::mutex pixel_lock_;
+  bool need_reset_texture_ = false;
 
 private:
 
-    void generate_texture();
-    void destroy_texture();
+  void generate_texture();
+  void destroy_texture();
 };
 
 #endif /* FILTER_TEXTURE_OBJECT_H */

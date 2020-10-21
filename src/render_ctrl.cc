@@ -8,7 +8,7 @@ static const int RENDERER_STATE_READY = 2;
 static const int RENDERER_STATE_RELEASE = 3;
 static const int RENDERER_STATE_DEAD = 4;
 
-RenderCtrl::RenderCtrl() : renderer_list_()
+RenderCtrl::RenderCtrl() : texture_cache_(), renderer_list_()
 {
   pthread_mutex_init(&render_lock_, nullptr);
 }
@@ -18,6 +18,7 @@ RenderCtrl::~RenderCtrl()
   stop();
   renderer_list_.clear();
   std::map<GLRenderer*, int>().swap(renderer_list_);
+  texture_cache_.purge_cache();
   pthread_mutex_destroy(&render_lock_);
 }
 
@@ -170,4 +171,14 @@ void RenderCtrl::release_renderers()
     }
   }
   pthread_mutex_unlock(&render_lock_);
+}
+
+Texture* RenderCtrl::fetch_texture(int width, int height, Cacheable::Attributes *attribute)
+{
+  return texture_cache_.fetch_object(width, height, (Texture::Attributes *)attribute);
+}
+
+void RenderCtrl::return_texture(Texture *texture)
+{
+  texture_cache_.return_object(texture);
 }
