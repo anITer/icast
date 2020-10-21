@@ -24,7 +24,8 @@
 #ifndef RENDER_CTRL_H
 #define RENDER_CTRL_H
 
-#include <pthread.h>
+#include <mutex>
+#include <condition_variable>
 #include <map>
 #include "egl_core.h"
 #include "texture.h"
@@ -66,14 +67,15 @@ private:
 
   pthread_t  render_thread_;
   volatile bool is_running_ = false;
-
   volatile int interval_us_ = 1000000 / 30;
+  volatile bool is_done_release_ = true;
 
   EglCore   *egl_core_ = nullptr;
   EGLSurface cur_background_surface_ = 0;
   ObjectCacher<Texture, Texture::Attributes> texture_cache_;
 
-  pthread_mutex_t render_lock_;
+  std::mutex render_mutex_;
+  std::condition_variable cv_;
   std::map<GLRenderer*, int> renderer_list_;
 };
 

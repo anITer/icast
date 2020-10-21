@@ -33,6 +33,7 @@ VideoWidget::VideoWidget(QWidget *parent) : QWidget{parent}
 VideoWidget::~VideoWidget()
 {
   if (mGLRenderer) {
+    mRenderCtrl->clear_renderers();
     mRenderCtrl->stop();
     delete mGLRenderer;
     mGLRenderer = nullptr;
@@ -59,7 +60,7 @@ VideoWidget::~VideoWidget()
 void VideoWidget::selectDevice()
 {
   const std::vector<DeviceInfo>& list = capDevice->enum_devices();
-  DeviceInfo dev = list[2];
+  DeviceInfo dev = list[list.size() - 1];
   capDevice->bind_device(dev);
   capDevice->start_device();
   DeviceInfo& info = capDevice->get_cur_device();

@@ -10,7 +10,7 @@ static const int RENDERER_STATE_DEAD = 4;
 
 RenderCtrl::RenderCtrl() : texture_cache_(), renderer_list_()
 {
-  pthread_mutex_init(&render_lock_, nullptr);
+
 }
 
 RenderCtrl::~RenderCtrl()
@@ -19,7 +19,6 @@ RenderCtrl::~RenderCtrl()
   renderer_list_.clear();
   std::map<GLRenderer*, int>().swap(renderer_list_);
   texture_cache_.purge_cache();
-  pthread_mutex_destroy(&render_lock_);
 }
 
 void RenderCtrl::start()
@@ -78,19 +77,18 @@ void* RenderCtrl::render_loop(void* data)
   long start = 0;
   long end = renderer->interval_us_;
   while (renderer->is_running_) {
-  usleep(std::max(0L, renderer->interval_us_ - (end - start)));
-  if (!renderer->is_running_) break;
+    usleep(std::max(0L, renderer->interval_us_ - (end - start)));
+    if (!renderer->is_running_) break;
 
-  gettimeofday(&tmp_time, nullptr);
-  start = tmp_time.tv_sec * 1000000 + tmp_time.tv_usec;
-  renderer->setup_renderers();
-  renderer->do_rendering();
-  renderer->release_renderers();
-  gettimeofday(&tmp_time, nullptr);
-  end = tmp_time.tv_sec * 1000000 + tmp_time.tv_usec;
+    gettimeofday(&tmp_time, nullptr);
+    start = tmp_time.tv_sec * 1000000 + tmp_time.tv_usec;
+    renderer->setup_renderers();
+    renderer->do_rendering();
+    renderer->release_renderers();
+    gettimeofday(&tmp_time, nullptr);
+    end = tmp_time.tv_sec * 1000000 + tmp_time.tv_usec;
   }
 
-  renderer->clear_renderers();
   renderer->release_renderers();
   renderer->release_egl();
   return nullptr;
@@ -112,65 +110,66 @@ void RenderCtrl::make_current(EGLSurface &surface)
 
 void RenderCtrl::add_renderer(GLRenderer *renderer)
 {
-  pthread_mutex_lock(&render_lock_);
+  std::unique_lock<std::mutex> lock(render_mutex_);
   if (renderer_list_.find(renderer) == renderer_list_.end()
     || renderer_list_[renderer] == RENDERER_STATE_DEAD) {
     renderer_list_[renderer] = RENDERER_STATE_IDLE;
   }
-  pthread_mutex_unlock(&render_lock_);
 }
 
 void RenderCtrl::remove_renderer(GLRenderer *renderer)
 {
-  pthread_mutex_lock(&render_lock_);
+  std::unique_lock<std::mutex> lock(render_mutex_);
   if (renderer_list_.find(renderer) != renderer_list_.end()) {
     renderer_list_[renderer] = RENDERER_STATE_RELEASE;
   }
-  pthread_mutex_unlock(&render_lock_);
+  is_done_release_ = false;
+  cv_.wait(lock, [&] { return is_done_release_; });
 }
 
 void RenderCtrl::clear_renderers()
 {
-  pthread_mutex_lock(&render_lock_);
+  std::unique_lock<std::mutex> lock(render_mutex_);
   for (auto renderer : renderer_list_) {
     renderer_list_[renderer.first] = RENDERER_STATE_RELEASE;
   }
-  pthread_mutex_unlock(&render_lock_);
+  is_done_release_ = false;
+  cv_.wait(lock, [&] { return is_done_release_; });
 }
 
 void RenderCtrl::do_rendering()
 {
-  pthread_mutex_lock(&render_lock_);
+  std::unique_lock<std::mutex> lock(render_mutex_);
   for (auto renderer : renderer_list_) {
     if (renderer.second == RENDERER_STATE_READY) {
       renderer.first->draw();
     }
   }
-  pthread_mutex_unlock(&render_lock_);
 }
 
 void RenderCtrl::setup_renderers()
 {
-  pthread_mutex_lock(&render_lock_);
+  std::unique_lock<std::mutex> lock(render_mutex_);
   for (auto renderer : renderer_list_) {
     if (renderer.second == RENDERER_STATE_IDLE) {
       renderer.first->setup();
       renderer_list_[renderer.first] = RENDERER_STATE_READY;
     }
   }
-  pthread_mutex_unlock(&render_lock_);
 }
 
 void RenderCtrl::release_renderers()
 {
-  pthread_mutex_lock(&render_lock_);
+  std::unique_lock<std::mutex> lock(render_mutex_);
   for (auto renderer : renderer_list_) {
     if (renderer.second == RENDERER_STATE_RELEASE) {
       renderer.first->release();
       renderer_list_[renderer.first] = RENDERER_STATE_DEAD;
     }
   }
-  pthread_mutex_unlock(&render_lock_);
+  is_done_release_ = true;
+  lock.unlock();
+  cv_.notify_all();
 }
 
 Texture* RenderCtrl::fetch_texture(int width, int height, Cacheable::Attributes *attribute)
