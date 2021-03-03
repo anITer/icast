@@ -25,13 +25,17 @@
 #include "ui_widget.h"
 #include <QApplication>
 #include <QPushButton>
+#include <qpa/qplatformnativeinterface.h>
+#include "x_window_env.h"
 
 int main(int argc, char *argv[])
 {
+    qputenv("QT_QPA_PLATFORM", "wayland");
     QApplication app(argc, argv);
     QWidget window;
     Ui::Widget ui;
     ui.setupUi(&window);
+    XWindowEnv::set_x_display(QApplication::platformNativeInterface()->nativeResourceForIntegration("display"));
 
     VideoWidget gl_widget;
     QVBoxLayout layout_video;

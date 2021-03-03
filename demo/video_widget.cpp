@@ -7,6 +7,9 @@
 #include "window_capturer.h"
 #include "composite_capturer.h"
 
+#include <wayland-egl-core.h>
+#include <qpa/qplatformnativeinterface.h>
+
 VideoWidget::VideoWidget(QWidget *parent) : QWidget{parent}
 {
   setAttribute(Qt::WA_NativeWindow);
@@ -51,6 +54,11 @@ VideoWidget::~VideoWidget()
     capDevice = nullptr;
   }
 
+  if (native_window_) {
+    wl_egl_window_destroy(native_window_);
+    native_window_ = nullptr;
+  }
+
   delete timer;
   timer = nullptr;
   delete winCapturer;
@@ -84,6 +92,9 @@ void VideoWidget::resizeEvent(QResizeEvent* resizeEvent)
   auto sz = resizeEvent->size();
   if((sz.width() < 0) || (sz.height() < 0)) return;
   mGLRenderer->set_output_size(sz.width(), sz.height());
+  if (native_window_) {
+    wl_egl_window_resize(native_window_, sz.width(), sz.height(), 0, 0);
+  }
 }
 
 void VideoWidget::_feedData()
@@ -103,9 +114,12 @@ void VideoWidget::_feedData()
 
 void VideoWidget::_init()
 {
-  XID nativeWindowHandler = winId();
+  // XID nativeWindowHandler = winId();
+  QPlatformNativeInterface* native = QApplication::platformNativeInterface();
+  wl_surface *surface = static_cast<wl_surface*>(native->nativeResourceForWindow("surface", windowHandle()));
+  native_window_ = wl_egl_window_create(surface, width(), height());
   std::string source_id = "";
   mRenderCtrl->add_renderer(mGLRenderer);
-  mGLRenderer->bind_window_for_source(nativeWindowHandler, source_id);
+  mGLRenderer->bind_window_for_source(native_window_, source_id);
   mIsInited = true;
 }

@@ -42,9 +42,7 @@ const int FLAG_TRY_GLES3 = 002;
 class EglCore {
 
 public:
-  EglCore();
-
-  EglCore(EGLContext shared_context, int flags);
+  EglCore(EGLContext shared_context = EGL_NO_CONTEXT, int flags = 0);
 
   ~EglCore();
 
@@ -55,7 +53,7 @@ public:
   void release_surface(EGLSurface egl_surface);
 
   //  创建EGLSurface
-  EGLSurface create_window_surface(Window win_id);
+  EGLSurface create_window_surface(void* win);
 
   // 创建离屏EGLSurface
   EGLSurface create_offscreen_surface(int width, int height);

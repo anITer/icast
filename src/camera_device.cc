@@ -141,7 +141,7 @@ int CameraDevice::grab_frame(unsigned char *&buffer)
 PixelFormat CameraDevice::get_pixel_format(v4l2_format_t& format)
 {
   switch(format.pixel_format_) {
-  case V4L2_PIX_FMT_RGBA32:
+  case V4L2_PIX_FMT_ARGB32:
   case V4L2_PIX_FMT_RGB32:
     return PIXEL_FORMAT_RGBA;
   case V4L2_PIX_FMT_RGB24:

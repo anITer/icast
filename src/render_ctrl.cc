@@ -64,7 +64,7 @@ void RenderCtrl::set_fps(float fps)
   interval_us_ = (int) (1000000 / fps);
 }
 
-EGLSurface RenderCtrl::create_surface(Window &window) {
+EGLSurface RenderCtrl::create_surface(void* window) {
   return egl_core_->create_window_surface(window);
 }
 

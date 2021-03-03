@@ -48,7 +48,7 @@ public:
   void remove_renderer(GLRenderer* renderer);
   void clear_renderers();
 
-  EGLSurface create_surface(Window &window);
+  EGLSurface create_surface(void* window);
   void release_surface(EGLSurface& surface);
   void swap_buffer(EGLSurface& surface);
   void make_current(EGLSurface& surface);

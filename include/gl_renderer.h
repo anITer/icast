@@ -46,7 +46,7 @@ public:
   GLRenderer(RenderCtrl* render_ctrl);
   virtual ~GLRenderer();
 
-  void bind_window_for_source(XID& win_id, std::string& src_id);
+  void bind_window_for_source(void* win, std::string& src_id);
 
   int upload_texture(uint8_t** data, int num_channel, int width, int height);
   void set_output_size(int width, int height);
@@ -94,7 +94,7 @@ protected:
 
   RenderCtrl* render_ctrl_ = nullptr;
   EGLSurface cur_window_surface_ = 0;
-  Window     cur_window_id_ = 0;
+  void* cur_window_ = nullptr;
   volatile bool is_window_changed = false;
 
   std::string source_id_ = "";

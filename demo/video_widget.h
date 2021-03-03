@@ -9,6 +9,7 @@
 
 class GLRenderer;
 class RenderCtrl;
+struct wl_egl_window;
 
 class VideoWidget : public QWidget
 {
@@ -30,6 +31,7 @@ private:
   void selectDevice(); // test function
   bool mIsInited = false;
 
+  wl_egl_window* native_window_ = nullptr;
   RenderCtrl* mRenderCtrl = nullptr;
   GLRenderer* mGLRenderer = nullptr;
   QTimer *timer = nullptr;

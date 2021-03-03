@@ -24,25 +24,23 @@
 #include "egl_core.h"
 #include <iostream>
 #include <cassert>
-
-EglCore::EglCore() : egl_display_(EGL_NO_DISPLAY)
-                   , egl_config_(nullptr)
-                   , egl_context_(EGL_NO_CONTEXT)
-                   , gl_version_(-1) {
-  init(nullptr, 0);
-}
-
-EglCore::~EglCore() {
-  destroy();
-}
+#include "x_window_env.h"
 
 /**
  * 构造方法
  * @param shared_context
  * @param flags
  */
-EglCore::EglCore(EGLContext shared_context, int flags) {
+EglCore::EglCore(EGLContext shared_context, int flags)
+: egl_display_(EGL_NO_DISPLAY)
+, egl_config_(nullptr)
+, egl_context_(EGL_NO_CONTEXT)
+, gl_version_(-1) {
   init(shared_context, flags);
+}
+
+EglCore::~EglCore() {
+  destroy();
 }
 
 /**
@@ -61,7 +59,8 @@ bool EglCore::init(EGLContext shared_context, int flags) {
     shared_context = EGL_NO_CONTEXT;
   }
 
-  egl_display_ = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+  void* x_display = XWindowEnv::get_x_display();
+  egl_display_ = eglGetDisplay((EGLNativeDisplayType)(x_display ? x_display : EGL_DEFAULT_DISPLAY));
   assert(egl_display_ != EGL_NO_DISPLAY);
   if (egl_display_ == EGL_NO_DISPLAY) {
     //ALOGE(TAG, "unable to get EGL14 display.\n");
@@ -186,16 +185,16 @@ void EglCore::release_surface(EGLSurface egl_surface) {
  * @param surface
  * @return
  */
-EGLSurface EglCore::create_window_surface(Window win_id) {
-  if (win_id == 0) {
+EGLSurface EglCore::create_window_surface(void* win) {
+  if (win == 0) {
     //ALOGE(TAG, "ANativeWindow is nullptr!");
     return EGL_NO_SURFACE;
   }
-  int surface_attribs[] = {
+  const int surface_attribs[] = {
       EGL_NONE
   };
   //ALOGD(TAG, "eglCreateWindowSurface start");
-  EGLSurface egl_surface = eglCreateWindowSurface(egl_display_, egl_config_, win_id, surface_attribs);
+  EGLSurface egl_surface = eglCreateWindowSurface(egl_display_, egl_config_, (EGLNativeWindowType)win, surface_attribs);
   if (egl_surface == EGL_NO_SURFACE) {
     //ALOGE(TAG, "eglCreateWindowSurface returned EGL_NO_SURFACE");
   }

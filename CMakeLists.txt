@@ -19,6 +19,7 @@ include_directories(
         ${OPENGL_INCLUDE_DIRS}
 )
 add_library(icast SHARED
+  include/x_window_env.h
   include/v4l2.h
   include/capture_interface.h
   include/camera_device.h
@@ -34,6 +35,7 @@ add_library(icast SHARED
   include/cacheable.h
   include/object_cacher.h
   src/v4l2.cc
+  src/x_window_env.cc
   src/camera_device.cc
   src/screen_capturer.cc
   src/window_capturer.cc
@@ -56,6 +58,8 @@ target_link_libraries(icast ${X11_LIBRARIES}       # libx11-dev
 
 # Next lines needed for building all Qt projects
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
+find_package(Qt5Gui)
+include_directories(${Qt5Gui_PRIVATE_INCLUDE_DIRS})
 
 # using Qt meta-system (precompiler)
 QT5_ADD_RESOURCES( RES_SOURCES demo/res/shader.qrc )
@@ -68,4 +72,4 @@ add_executable(sample
         ${RES_SOURCES}
         ${UI_HEADERS}
 )
-target_link_libraries(sample icast Qt5::Widgets)
+target_link_libraries(sample icast Qt5::Widgets wayland-egl)

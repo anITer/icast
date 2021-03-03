@@ -81,11 +81,11 @@ GLRenderer::~GLRenderer()
   pthread_mutex_destroy(&pixel_mutex_);
 }
 
-void GLRenderer::bind_window_for_source(XID &win_id, std::string& src_id)
+void GLRenderer::bind_window_for_source(void* win, std::string& src_id)
 {
   source_id_ = src_id;
-  is_window_changed = win_id != cur_window_id_;
-  cur_window_id_ = win_id;
+  is_window_changed = win != cur_window_;
+  cur_window_ = win;
 }
 
 int GLRenderer::setup()
@@ -160,8 +160,8 @@ int GLRenderer::pre_draw()
       render_ctrl_->release_surface(cur_window_surface_);
       cur_window_surface_ = EGL_NO_SURFACE;
     }
-    if (cur_window_id_) {
-      cur_window_surface_ = render_ctrl_->create_surface(cur_window_id_);
+    if (cur_window_) {
+      cur_window_surface_ = render_ctrl_->create_surface(cur_window_);
     }
     is_window_changed = false;
   }
@@ -171,7 +171,7 @@ int GLRenderer::pre_draw()
 
 int GLRenderer::draw()
 {
-  if (!cur_window_id_) {
+  if (!cur_window_) {
     return 0;
   }
 
